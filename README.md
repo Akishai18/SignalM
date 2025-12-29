@@ -52,21 +52,32 @@ The project uses historical S&P 500 data consisting of:
 
 Raw data is reshaped into structured matrices:
 
-**Price Matrix:**
-$$
-P_{t,i} \in \mathbb{R}^{T \times N}
-$$
-Where $T$ = time periods, $N$ = number of assets
+#### Price Matrix
+```
+P(t,i) ∈ ℝ^(T × N)
+```
 
-**Log Return Matrix:**
-$$
-R_{t,i} = \ln(P_{t,i}) - \ln(P_{t-1,i})
-$$
+Where:
+- **T** = number of time periods (trading days)
+- **N** = number of assets (stocks)
+- **P(t,i)** = price of asset *i* at time *t*
+
+#### Log Return Matrix
+```
+R(t,i) = ln(P(t,i)) - ln(P(t-1,i))
+```
+
+Where:
+- **R(t,i)** = log return of asset *i* from time *t-1* to *t*
+- **ln** = natural logarithm
+
+**Why Log Returns?**
 
 This transformation ensures:
-- Stationarity for time-series analysis
-- Additive properties across time periods
-- Normalization of price scales across assets
+- **Stationarity:** Returns are more stationary than prices for time-series analysis
+- **Time-additivity:** Multi-period returns can be summed: R(t₁→t₃) = R(t₁→t₂) + R(t₂→t₃)
+- **Scale normalization:** Comparable across assets with different price levels
+- **Symmetry:** A 10% gain followed by 10% loss returns approximately to origin
 
 ---
 
@@ -128,34 +139,50 @@ These windows enable analysis of:
 
 ### 1. Covariance & Correlation Analysis
 
-To understand market structure, we compute the rolling covariance matrix $\Sigma$ over a window $W$:
+To understand market structure, we compute the rolling covariance matrix **Σ** over a window **W**:
 
-$$
-\Sigma_W = \frac{1}{W-1} \sum_{t=1}^{W} (R_t - \bar{R})(R_t - \bar{R})^T
-$$
+```
+Σ_W = (1/(W-1)) × Σ(t=1 to W) [(R_t - R̄)(R_t - R̄)ᵀ]
+```
+
+Where:
+- **Σ_W** = covariance matrix over window W
+- **R_t** = return vector at time t
+- **R̄** = mean return vector
+- **ᵀ** = matrix transpose
 
 The corresponding correlation matrix provides scale-invariant co-movement metrics.
 
 ### 2. Factor Decomposition via PCA
 
-We solve the eigenvalue problem for the correlation matrix $C$ to identify dominant risk factors:
+We solve the eigenvalue problem for the correlation matrix **C** to identify dominant risk factors:
 
-$$
-C v = \lambda v
-$$
+```
+C × v = λ × v
+```
 
 Where:
-- $\lambda$ (eigenvalues) represents variance explained by each principal component
-- $v$ (eigenvectors) defines the factor loadings
-- High PC1 variance indicates a correlated "risk-on/risk-off" market regime
+- **C** = correlation matrix
+- **v** = eigenvector (factor loadings)
+- **λ** = eigenvalue (variance explained)
+
+**Interpretation:**
+- High **λ₁** (first eigenvalue) indicates a correlated "risk-on/risk-off" market regime
+- The eigenvector **v₁** defines the loadings of the dominant market factor
+- A diversified portfolio has variance spread across multiple eigenvalues
 
 ### 3. Explained Variance Tracking
 
-The proportion of total variance explained by the first $k$ components:
+The proportion of total variance explained by the first **k** components:
 
-$$
-\text{Explained Variance Ratio} = \frac{\sum_{i=1}^{k} \lambda_i}{\sum_{i=1}^{N} \lambda_i}
-$$
+```
+Explained Variance Ratio = (Σ(i=1 to k) λᵢ) / (Σ(i=1 to N) λᵢ)
+```
+
+Where:
+- **λᵢ** = eigenvalue of the i-th principal component
+- **k** = number of components considered
+- **N** = total number of assets
 
 A rising PC1 ratio suggests increasing market integration and systemic risk.
 
@@ -366,6 +393,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## 👤 Author
 
 **Akishai**  
+
 For questions or collaboration inquiries, please open an issue on GitHub.
 
 ---
