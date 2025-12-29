@@ -112,11 +112,13 @@ def compute_rolling_statistics(log_returns, windows=[21, 63, 252], annualize=Tru
     #       - 'skewness': Rolling skewness for each symbol and window
     #       - 'kurtosis': Rolling kurtosis for each symbol and window
     #       - 'correlation': Rolling average pairwise correlation for each window
+    #       - 'dispersion': Rolling cross-sectional dispersion (one series per window)
     results = {
         'volatility': pd.DataFrame(index=log_returns.index),
         'skewness': pd.DataFrame(index=log_returns.index),
         'kurtosis': pd.DataFrame(index=log_returns.index),
-        'correlation': pd.DataFrame(index=log_returns.index)
+        'correlation': pd.DataFrame(index=log_returns.index),
+        'dispersion': pd.DataFrame(index=log_returns.index)
     }
     
     for window in windows:
@@ -143,7 +145,6 @@ def compute_rolling_statistics(log_returns, windows=[21, 63, 252], annualize=Tru
         for i in range(window - 1, len(log_returns)):
             window_data = log_returns.iloc[i - window + 1:i + 1]
             # Drop columns (stocks) that have ANY NaN in this window
-            # This ensures we only calculate correlation on stocks valid for this specific window
             window_data = window_data.dropna(axis=1, how='any')
             
             if window_data.shape[1] < 2:
@@ -163,9 +164,67 @@ def compute_rolling_statistics(log_returns, windows=[21, 63, 252], annualize=Tru
             index=indices
         )
         results['correlation'] = pd.concat([results['correlation'], corr_df], axis=1)
+
+        # Rolling Cross-Sectional Dispersion
+        # cross-sectional std across symbols at each date, then rolling mean to smooth
+        cross_std = log_returns.std(axis=1, skipna=True)
+        disp = cross_std.rolling(window=window).mean()
+        disp_df = pd.DataFrame({f'dispersion_{window}': disp}, index=disp.index)
+        results['dispersion'] = pd.concat([results['dispersion'], disp_df], axis=1)
     
     max_window = max(windows)
     for key in results:
         results[key] = results[key].iloc[max_window:].copy()
     
     return results
+
+
+def assemble_feature_matrix(rolling_stats, include=['volatility', 'correlation', 'dispersion']):
+    # Concatenate selected rolling statistics into one feature matrix.
+    # Returns DataFrame indexed by date with columns for each selected feature.
+    parts = []
+    for name in include:
+        if name in rolling_stats and not rolling_stats[name].empty:
+            parts.append(rolling_stats[name])
+    if not parts:
+        return pd.DataFrame()
+    # Align indices (intersection) then concat columns
+    common_index = parts[0].index
+    for p in parts[1:]:
+        common_index = common_index.intersection(p.index)
+    parts_aligned = [p.loc[common_index] for p in parts]
+    feat = pd.concat(parts_aligned, axis=1)
+    return feat
+
+
+def compute_correlation_matrix(price_matrix, method='pearson', use_log_returns=True):
+    """
+    Compute pairwise correlation matrix of returns with sample counts.
+
+    Args:
+        price_matrix: DataFrame indexed by Date, columns = symbols (prices).
+        method: correlation method ('pearson' by default).
+        use_log_returns: if True compute log returns; else percent returns.
+
+    Returns:
+        corr_df: DataFrame NxN correlation matrix (pairwise Pearson by default).
+        pair_counts: DataFrame NxN integer matrix with number of overlapping observations used for each pair.
+        returns: DataFrame of returns used to compute correlations (aligned).
+    Notes:
+        - Pandas .corr() uses pairwise deletion automatically, but pair_counts gives the exact sample size per pair.
+    """
+    if use_log_returns:
+        returns = np.log(price_matrix).diff()
+    else:
+        returns = price_matrix.pct_change()
+    # drop first row of NaNs from differencing (keep rest; pairwise will handle remaining NaNs)
+    returns = returns.iloc[1:].copy()
+
+    # Correlation matrix (pairwise by pandas)
+    corr_df = returns.corr(method=method)
+
+    # Pairwise counts: for columns i,j count overlapping non-null rows
+    notnull = returns.notna().astype(int)
+    pair_counts = notnull.T.dot(notnull)
+
+    return corr_df, pair_counts, returns

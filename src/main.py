@@ -67,8 +67,22 @@ def run_full_analysis(base_path="archive", generate_plots=True, save_plots_dir=N
     display.print_rolling_stats_results(rolling_stats)
     # Note: Rolling correlation is now included in rolling_stats['correlation']
     
-    # ===== 8. Generate Rolling Statistics Visualizations =====
+    # assemble feature matrix and show column names + shape
+    features = analyze.assemble_feature_matrix(rolling_stats, include=['volatility', 'correlation', 'dispersion'])
+    display.print_feature_matrix_info(features, sample_columns=60)
+    
+    # compute correlation matrix of returns and display top pairs + heatmap 
+    # compute correlation on log-returns (pairwise overlap), get per-pair sample counts
+    corr_df, pair_counts, returns_for_corr = analyze.compute_correlation_matrix(price_matrix, method='pearson', use_log_returns=True)
+    display.print_correlation_info(corr_df, pair_counts=pair_counts, top_n=10)
+
     if generate_plots:
+        # create heatmap figure (will be shown later with plt.show() 
+        fig_corrmat = visualize.plot_correlation_heatmap(corr_df, figsize=(12, 10))
+        if save_plots_dir:
+            fig_corrmat.savefig(f"{save_plots_dir}/correlation_heatmap.png", dpi=300, bbox_inches='tight')
+            plt.close(fig_corrmat)
+        
         display.print_visualization_info("rolling", details=[
             "Volatility Cluster plot",
             "Correlation Spike plot",
@@ -120,7 +134,7 @@ def run_full_analysis(base_path="archive", generate_plots=True, save_plots_dir=N
 
 if __name__ == "__main__":
     results = run_full_analysis(
-        base_path="archive",
+        base_path="data",
         generate_plots=True,
         save_plots_dir=None  
     )
