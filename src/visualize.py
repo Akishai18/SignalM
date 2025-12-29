@@ -541,3 +541,28 @@ def plot_rolling_statistics_overview(rolling_stats, symbol=None, windows=[21, 63
     plt.tight_layout()
     return fig
 
+
+def plot_correlation_heatmap(corr_df, figsize=(12, 10), cmap='RdBu_r', center=0.0, mask_upper=True):
+    # Heatmap of correlation matrix. By default masks the upper triangle.
+    fig, ax = plt.subplots(figsize=figsize)
+    if mask_upper:
+        mask = np.triu(np.ones_like(corr_df, dtype=bool))
+    else:
+        mask = None
+
+    sns.heatmap(
+        corr_df,
+        mask=mask,
+        cmap=cmap,
+        center=center,
+        vmax=1.0,
+        vmin=-1.0,
+        square=False,
+        linewidths=0.25,
+        cbar_kws={"shrink": 0.5},
+        ax=ax
+    )
+    ax.set_title('Correlation Matrix of Returns', fontsize=14, fontweight='bold')
+    plt.tight_layout()
+    return fig
+

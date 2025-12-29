@@ -98,6 +98,22 @@ def print_rolling_stats_results(results):
         print(f"  {key.capitalize()}: {results[key].shape[0]} rows × {results[key].shape[1]} columns")
 
 
+def print_feature_matrix_info(features, sample_columns=50):
+    # Print feature matrix column names and shape
+    print_section("Feature Matrix")
+    if features is None or features.empty:
+        print("Feature matrix is empty.")
+        return
+    print(f"Shape: {features.shape[0]} rows × {features.shape[1]} columns")
+    total = features.shape[1]
+    preview = list(features.columns[:sample_columns])
+    print(f"First {len(preview)} columns (preview):")
+    print(preview)
+    if total > sample_columns:
+        print(f"... + {total - sample_columns} more columns")
+    print(f"Total features: {total}")
+
+
 def print_completion_summary(price_matrix, log_returns):
     # Print final completion summary.
     print_section("Data Processing Complete!")
@@ -129,4 +145,25 @@ def print_all_complete():
     # Print final completion message.
     print_section("All Analysis Complete!")
     print("Close plot windows to continue or save them using fig.savefig('filename.png')")
+
+
+def print_correlation_info(corr_df, pair_counts=None, top_n=10):
+    """
+    Nicely print basic info about correlation matrix and show top correlated / anti-correlated pairs.
+    """
+    print_section("Correlation Matrix")
+    print(f"Shape: {corr_df.shape[0]} rows × {corr_df.shape[1]} columns")
+    if pair_counts is not None:
+        vals = pair_counts.values
+        print(f"Pairwise sample counts (min, median, max): {int(vals.min())}, {int(np.median(vals))}, {int(vals.max())}")
+    
+    # flatten upper triangle to list of pairs
+    tri = np.triu(np.ones(corr_df.shape), k=1).astype(bool)
+    flat = corr_df.where(tri)
+    stacked = flat.stack().sort_values(ascending=False)
+    
+    print(f"\nTop {top_n} positively correlated pairs:")
+    print(stacked.head(top_n))
+    print(f"\nTop {top_n} negatively correlated pairs:")
+    print(stacked.tail(top_n))
 
