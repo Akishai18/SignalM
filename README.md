@@ -14,7 +14,7 @@ This tool bridges the gap between **raw financial data** and **actionable risk i
 ## 🎯 Core Objectives
 
 1. **Data Transformation & Alignment**  
-   Convert raw price data into a clean, synchronized return matrix suitable for quantitative analysis
+   Convert raw price data into a clean synchronized return matrix suitable for quantitative analysis
 
 2. **Risk Quantification**  
    Measure market risk through rolling volatility, cross-sectional dispersion, and correlation dynamics
