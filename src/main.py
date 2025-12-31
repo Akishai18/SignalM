@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 import analyze
 import display
 import visualize
+import pca
+import numpy as np
 
 
 def run_full_analysis(base_path="archive", generate_plots=True, save_plots_dir=None):
@@ -70,6 +72,62 @@ def run_full_analysis(base_path="archive", generate_plots=True, save_plots_dir=N
     # assemble feature matrix and show column names + shape
     features = analyze.assemble_feature_matrix(rolling_stats, include=['volatility', 'correlation', 'dispersion'])
     display.print_feature_matrix_info(features, sample_columns=60)
+
+    # --- New: cross-sectional normalize per-date for per-symbol features ---
+    norm_features = analyze.normalize_features_cross_sectional(features)
+    display.print_section("Feature Matrix (Cross-Sectionally Normalized)")
+    display.print_feature_matrix_info(norm_features, sample_columns=60)
+
+    # --- Show and save a quick sample of the normalized features ---
+    print("\nNormalized features (first 5 rows):")
+    print(norm_features.head())
+
+    last_date = norm_features.index.max()
+    print(f"\nCross-sectional values on last date: {last_date}")
+    print(norm_features.loc[last_date].head(60))
+
+    # Save CSV for external inspection
+    out_csv = f"{save_plots_dir}/normalized_features.csv" if save_plots_dir else "normalized_features.csv"
+    norm_features.to_csv(out_csv)
+    print(f"Saved normalized features to: {out_csv}")
+
+    # --- PCA on normalized features (uses src/pca.py) ---
+    try:
+        pca_res = pca.run_pca(norm_features, n_components=15, impute_method='zero')
+        components = pca_res['components']
+        loadings = pca_res['loadings']
+        evr = pca_res['explained_variance_ratio']
+
+        display.print_section("PCA Summary")
+        print("Explained variance ratio (first 10):", list(evr[:10]))
+        print("Cumulative variance (first 10):", list(np.cumsum(evr)[:10]))
+
+        # Save PCA outputs
+        comps_csv = f"{save_plots_dir}/pca_components.csv" if save_plots_dir else "pca_components.csv"
+        loads_csv = f"{save_plots_dir}/pca_loadings.csv" if save_plots_dir else "pca_loadings.csv"
+        components.to_csv(comps_csv)
+        loadings.to_csv(loads_csv)
+        print(f"Saved PCA components -> {comps_csv}")
+        print(f"Saved PCA loadings    -> {loads_csv}")
+
+        # Plot explained variance and PC1-3 time series
+        if generate_plots:
+            fig_var = visualize.plot_pca_variance(evr)
+            if save_plots_dir:
+                fig_var.savefig(f"{save_plots_dir}/pca_explained_variance.png", dpi=300, bbox_inches='tight')
+                plt.close(fig_var)
+            else:
+                plt.show()
+
+            fig_pcs = visualize.plot_pca_components_time_series(components, pcs=[1, 2, 3])
+            if save_plots_dir:
+                fig_pcs.savefig(f"{save_plots_dir}/pca_pc123_timeseries.png", dpi=300, bbox_inches='tight')
+                plt.close(fig_pcs)
+            else:
+                plt.show()
+
+    except Exception as e:
+        print("PCA failed:", e)
     
     # compute correlation matrix of returns and display top pairs + heatmap 
     # compute correlation on log-returns (pairwise overlap), get per-pair sample counts

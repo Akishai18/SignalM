@@ -566,3 +566,43 @@ def plot_correlation_heatmap(corr_df, figsize=(12, 10), cmap='RdBu_r', center=0.
     plt.tight_layout()
     return fig
 
+
+def plot_pca_variance(explained_variance_ratio, figsize=(8, 4)):
+    """
+    Bar: explained variance ratio per PC. Line: cumulative variance.
+    Returns matplotlib Figure.
+    """
+    evr = np.asarray(explained_variance_ratio, dtype=float)
+    cum = np.cumsum(evr)
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.bar(np.arange(1, len(evr) + 1), evr, alpha=0.75, label='Explained variance ratio')
+    ax.plot(np.arange(1, len(evr) + 1), cum, color='C1', marker='o', label='Cumulative variance')
+    ax.set_xlabel('Principal Component')
+    ax.set_ylabel('Explained variance')
+    ax.set_title('PCA Explained Variance')
+    ax.set_xticks(np.arange(1, len(evr) + 1))
+    ax.grid(alpha=0.3)
+    ax.legend()
+    plt.tight_layout()
+    return fig
+
+
+def plot_pca_components_time_series(components_df, pcs=[1, 2, 3], figsize=(12, 5)):
+    """
+    Plot time series for PC1..PC3 (pcs is 1-based list).
+    components_df: DataFrame indexed by date with columns like 'PC1','PC2',...
+    Returns matplotlib Figure.
+    """
+    fig, ax = plt.subplots(figsize=figsize)
+    for pc in pcs:
+        col = f"PC{pc}"
+        if col in components_df.columns:
+            ax.plot(components_df.index, components_df[col], label=col, linewidth=1.2)
+    ax.set_xlabel('Date')
+    ax.set_ylabel('Component value')
+    ax.set_title('PCA Components Time Series')
+    ax.legend()
+    ax.grid(alpha=0.25)
+    plt.tight_layout()
+    return fig
+
