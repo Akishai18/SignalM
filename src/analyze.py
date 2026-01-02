@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import os
 import sys
+import re
 
 
 def read_csv_file(file_path=None):
@@ -228,3 +229,52 @@ def compute_correlation_matrix(price_matrix, method='pearson', use_log_returns=T
     pair_counts = notnull.T.dot(notnull)
 
     return corr_df, pair_counts, returns
+
+
+def normalize_features_cross_sectional(features):
+    """
+    Cross-sectional z-score normalization for feature matrix.
+
+    - Per-symbol groups (detected by regex '(vol|skew|kurt)_{window}') are z-scored across symbols at each date (row-wise).
+      Example group: ['AAPL_vol_21', 'MSFT_vol_21', ...] -> for each date compute mean/std across these columns and z-score.
+    - Global single-series features like 'avg_pairwise_corr_21' and 'dispersion_21' are standardized across time (column-wise).
+    Returns a new DataFrame with same index/columns.
+    """
+    if features is None or features.empty:
+        return features.copy()
+
+    feat = features.copy()
+    cols = feat.columns.tolist()
+
+    # Find per-symbol metric groups like *_vol_21, *_skew_63, *_kurt_252
+    pattern = re.compile(r'_(vol|skew|kurt)_(\d+)$')
+    groups = {}
+    singles = []
+
+    for c in cols:
+        m = pattern.search(c)
+        if m:
+            key = f"{m.group(1)}_{m.group(2)}"  # e.g. vol_21
+            groups.setdefault(key, []).append(c)
+        else:
+            singles.append(c)
+
+    # Row-wise z-score each detected group (cross-sectional)
+    for key, group_cols in groups.items():
+        grp = feat[group_cols]
+        mean_row = grp.mean(axis=1)
+        std_row = grp.std(axis=1).replace(0, np.nan)  # avoid divide-by-zero
+        z = grp.sub(mean_row, axis=0).div(std_row, axis=0).fillna(0)
+        feat[group_cols] = z
+
+    # Column-wise standardize remaining single-series features (time-series standardization)
+    for c in singles:
+        col = feat[c]
+        col_mean = col.mean()
+        col_std = col.std()
+        if pd.isna(col_std) or col_std == 0:
+            feat[c] = 0.0
+        else:
+            feat[c] = (col - col_mean) / col_std
+
+    return feat
