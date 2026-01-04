@@ -4,17 +4,18 @@ import display
 import visualize
 import pca
 import numpy as np
+import os
 
 
 def run_full_analysis(base_path="archive", generate_plots=True, save_plots_dir=None):
-    # ===== 1. Load Data =====
+    # Load Data
     display.print_section("Loading CSV files...")
     stocks_df, companies_df, index_df = analyze.load_all_csvs(base_path=base_path)
     display.print_loading_status("stocks data", stocks_df.shape)
     display.print_loading_status("companies data", companies_df.shape)
     display.print_loading_status("index data", index_df.shape)
     
-    # ===== 2. Clean and Structure Data =====
+    # Clean and Structure Data
     price_matrix, cleaning_stats = analyze.clean_and_pivot_stock_data(stocks_df)
     display.print_cleaning_stats(
         initial_rows=cleaning_stats['initial_rows'],
@@ -28,12 +29,12 @@ def run_full_analysis(base_path="archive", generate_plots=True, save_plots_dir=N
     # Display price matrix summary
     display.print_dataframe_summary(price_matrix, title="Price Matrix P_{t,i} Summary")
     
-    # ===== 3. Convert to Log Returns =====
+    # Convert to Log Returns
     log_returns, rows_dropped = analyze.convert_to_log_returns(price_matrix)
     display.print_log_returns_info(log_returns, rows_dropped)
     display.print_dataframe_summary(log_returns, title="Log Returns Matrix R_{t,i} Summary")
-    
-    # ===== 4. Compute Basic Statistics =====
+
+    # Compute Basic Statistics
     mean_returns = analyze.compute_mean_returns(log_returns)
     display.print_statistics_summary(mean_returns, "mean returns", top_n=10)
     
@@ -45,11 +46,11 @@ def run_full_analysis(base_path="archive", generate_plots=True, save_plots_dir=N
     
     kurtosis = analyze.compute_kurtosis(log_returns)
     display.print_statistics_summary(kurtosis, "kurtosis")
-    
-    # ===== 5. Display Completion Summary =====
+
+    # Display Completion Summary
     display.print_completion_summary(price_matrix, log_returns)
-    
-    # ===== 6. Generate Distribution Plots =====
+
+    # Generate Distribution Plots
     if generate_plots:
         display.print_visualization_info("distributions")
         visualize.plot_all_distributions(
@@ -61,8 +62,8 @@ def run_full_analysis(base_path="archive", generate_plots=True, save_plots_dir=N
             symbol=None,
             save_dir=save_plots_dir
         )
-    
-    # ===== 7. Compute Rolling Statistics =====
+
+    # Compute Rolling Statistics
     windows = [21, 63, 252]  # 1 month, 1 quarter, 1 year
     display.print_rolling_stats_info(windows, annualize=True)
     rolling_stats = analyze.compute_rolling_statistics(log_returns, windows=windows, annualize=True)
@@ -128,6 +129,48 @@ def run_full_analysis(base_path="archive", generate_plots=True, save_plots_dir=N
 
     except Exception as e:
         print("PCA failed:", e)
+
+    #Rolling PCA metrics (windowed PCA over time)
+    try:
+        run_rolling_pca = False
+        # Ask the user whether to run the rolling PCA (can be slow)
+        try:
+            resp = input("Run rolling PCA metrics (takes time)? [y/N]: ").strip().lower()
+            run_rolling_pca = resp in ('y', 'yes')
+        except Exception:
+            # non-interactive environments may raise; default to False
+            run_rolling_pca = False
+
+        if run_rolling_pca:
+            # ensure output directory exists
+            pca_out_dir = os.path.join(save_plots_dir, "pca_data") if save_plots_dir else "pca_data"
+            os.makedirs(pca_out_dir, exist_ok=True)
+
+            metrics = pca.rolling_pca_metrics(
+                norm_features,
+                window=252,
+                n_components=10,
+                impute_method='col_mean',
+                normalize_within_window=True
+            )
+            metrics_csv = os.path.join(pca_out_dir, "rolling_pca_metrics.csv")
+            metrics.to_csv(metrics_csv)
+            print(f"Saved rolling PCA metrics -> {metrics_csv}")
+
+            if generate_plots:
+                fig_metrics = visualize.plot_pca_metrics_time_series(metrics)
+                fig_eff = visualize.plot_effective_dimension(metrics)
+
+                if save_plots_dir:
+                    fig_metrics.savefig(os.path.join(pca_out_dir, "rolling_pca_pc123_variance.png"), dpi=300, bbox_inches='tight')
+                    fig_eff.savefig(os.path.join(pca_out_dir, "rolling_pca_effective_dimension.png"), dpi=300, bbox_inches='tight')
+                    plt.close(fig_metrics); plt.close(fig_eff)
+                else:
+                    plt.show()
+        else:
+            print("Skipping rolling PCA metrics (user opted out).")
+    except Exception as e:
+        print("Rolling PCA metrics failed:", e)
     
     # compute correlation matrix of returns and display top pairs + heatmap 
     # compute correlation on log-returns (pairwise overlap), get per-pair sample counts

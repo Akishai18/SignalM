@@ -606,3 +606,39 @@ def plot_pca_components_time_series(components_df, pcs=[1, 2, 3], figsize=(12, 5
     plt.tight_layout()
     return fig
 
+
+def plot_pca_metrics_time_series(metrics_df, pcs=['PC1_var','PC2_var','PC3_var'], figsize=(12,6)):
+
+    # Plot PC1/PC2/PC3 explained-variance time series and cumulative 3-PC variance.
+    # Expects metrics_df with columns 'PC1_var','PC2_var','PC3_var','cum_var_3'.
+
+    fig, ax = plt.subplots(figsize=figsize)
+    for col in pcs:
+        if col in metrics_df.columns:
+            ax.plot(metrics_df.index, metrics_df[col], label=col, linewidth=1.2)
+    if 'cum_var_3' in metrics_df.columns:
+        ax.plot(metrics_df.index, metrics_df['cum_var_3'], label='cum_var_3', color='k', linestyle='--', linewidth=1.2)
+    ax.set_xlabel('Date')
+    ax.set_ylabel('Explained variance (ratio)')
+    ax.set_title('Rolling PCA Explained Variance (PC1–PC3) and Cumulative (3 PCs)')
+    ax.legend()
+    ax.grid(alpha=0.25)
+    plt.tight_layout()
+    return fig
+
+
+def plot_effective_dimension(metrics_df, figsize=(10,4)):
+    """
+    Plot effective dimension over time (eff_dim column required).
+    """
+    if 'eff_dim' not in metrics_df.columns:
+        raise KeyError("metrics_df must contain 'eff_dim' column")
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.plot(metrics_df.index, metrics_df['eff_dim'], color='C2', linewidth=1.2)
+    ax.set_xlabel('Date')
+    ax.set_ylabel('Effective dimension')
+    ax.set_title('Rolling Effective Dimension of Market (PCA Spectrum)')
+    ax.grid(alpha=0.25)
+    plt.tight_layout()
+    return fig
+
