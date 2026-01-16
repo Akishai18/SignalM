@@ -218,7 +218,38 @@ def run_full_analysis(base_path="archive", generate_plots=True, save_plots_dir=N
         if not save_plots_dir:
             display.print_all_complete()
             plt.show()
+
+    # Regime Clustering Pipeline
+    print("\n" + "="*60)
+    print("REGIME CLUSTERING")
+    print("="*60)
     
+    from regime.run_regime_clustering import run_regime_pipeline
+    
+    # Determine PCA metrics path (relative to project root)
+    if os.path.exists("../pca_data/rolling_pca_metrics.csv"):
+        pca_metrics_path = "../pca_data/rolling_pca_metrics.csv"
+    elif os.path.exists("pca_data/rolling_pca_metrics.csv"):
+        pca_metrics_path = "pca_data/rolling_pca_metrics.csv"
+    else:
+        print("Warning: Could not find rolling_pca_metrics.csv. Skipping regime clustering.")
+        pca_metrics_path = None
+    
+    if pca_metrics_path:
+        regime_results = run_regime_pipeline(
+            pca_metrics_path=pca_metrics_path,
+            rolling_stats=rolling_stats,
+            k_range=[3, 4, 5, 6],
+            final_k=4,
+            save_dir="regime_results" if save_plots_dir else None
+        )
+
+    
+
+
+
+
+
     # Return all computed data for further use
     return {
         'price_matrix': price_matrix,
