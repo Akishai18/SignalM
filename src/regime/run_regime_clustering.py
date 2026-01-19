@@ -38,8 +38,8 @@ def run_regime_pipeline(
     pca_metrics_path="../pca_data/rolling_pca_metrics.csv",
     rolling_stats=None,
     k_range=[3, 4, 5, 6],
-    final_k=3,
-    save_dir=None
+    final_k=4,
+    save_dir="regime_results"
 ):
     #Complete regime clustering pipeline.
     
@@ -68,7 +68,7 @@ def run_regime_pipeline(
     X = build_regime_features(
         rolling_metrics_path=pca_metrics_path,
         rolling_stats=rolling_stats,
-        window=252
+        window=126  # 6-month window for more frequent transitions (vs 252 = annual)
     )
     print(f"✓ Feature matrix shape: {X.shape}")
     print(f"  Date range: {X.index.min()} to {X.index.max()}")
@@ -124,7 +124,9 @@ def run_regime_pipeline(
     # 2. Economic Monotonicity
     print("\n[6.2] Economic Monotonicity Check...")
     monotonicity = compute_economic_monotonicity(X, regime_labels)
-    print_economic_monotonicity(monotonicity)
+    regime_label_map = print_economic_monotonicity(monotonicity, use_descriptive_labels=True)
+    if regime_label_map is None:
+        regime_label_map = {}
     
     # 3. UMAP Separation Check
     print("\n[6.3] UMAP Separation Check...")
@@ -150,7 +152,8 @@ def run_regime_pipeline(
                 plt.savefig(os.path.join(save_dir, f"umap_by_regime_k{final_k}.png"), dpi=300, bbox_inches='tight')
                 print(f"  ✓ UMAP plot saved to {save_dir}/umap_by_regime_k{final_k}.png")
             print("  ✓ UMAP visualization generated")
-            print("  → Check: Regimes should form contiguous regions, not random salt-and-pepper")
+            print("  → Note: Disconnected clusters of same color reflect regime recurrence")
+            print("    (similar market structures appearing at different points in time)")
         except Exception as e:
             print(f"  ⚠ Could not generate UMAP plot: {e}")
             fig_umap = None
@@ -198,6 +201,7 @@ def run_regime_pipeline(
         'evaluation_summary': summary,
         'final_model': model,
         'regime_labels': regime_labels,
+        'regime_label_map': regime_label_map,  # Maps numeric IDs to descriptive names
         'persistence': persistence,
         'persistence_diagnostics': persistence_diag,
         'economic_monotonicity': monotonicity,

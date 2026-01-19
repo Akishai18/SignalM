@@ -64,7 +64,7 @@ def run_full_analysis(base_path="archive", generate_plots=True, save_plots_dir=N
         )
 
     # Compute Rolling Statistics
-    windows = [21, 63, 252]  # 1 month, 1 quarter, 1 year
+    windows = [21, 63, 126, 252]  # 1 month, 1 quarter, 6 months, 1 year
     display.print_rolling_stats_info(windows, annualize=True)
     rolling_stats = analyze.compute_rolling_statistics(log_returns, windows=windows, annualize=True)
     display.print_rolling_stats_results(rolling_stats)
@@ -236,12 +236,14 @@ def run_full_analysis(base_path="archive", generate_plots=True, save_plots_dir=N
         pca_metrics_path = None
     
     if pca_metrics_path:
+        # Always save regime results to regime_results/ directory
+        regime_save_dir = save_plots_dir if save_plots_dir else "regime_results"
         regime_results = run_regime_pipeline(
             pca_metrics_path=pca_metrics_path,
             rolling_stats=rolling_stats,
             k_range=[3, 4, 5, 6],
             final_k=4,
-            save_dir="regime_results" if save_plots_dir else None
+            save_dir=regime_save_dir
         )
 
     

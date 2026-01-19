@@ -3,10 +3,10 @@ import pandas as pd
 import numpy as np
 
 def compute_regime_persistence(labels: pd.Series) -> pd.Series:
-    """
-    Given a series of regime labels (indexed by date),
-    return a Series of persistence lengths (number of consecutive days in each regime) for each regime id.
-    """
+    
+    #iven a series of regime labels (indexed by date),
+    #return a Series of persistence lengths (number of consecutive days in each regime) for each regime id.
+    
     if isinstance(labels, np.ndarray):
         labels = pd.Series(labels)
     runs = labels.ne(labels.shift()).cumsum()
@@ -14,10 +14,10 @@ def compute_regime_persistence(labels: pd.Series) -> pd.Series:
     return persistence
 
 def diagnose_persistence(labels: pd.Series, min_days_threshold=21):
-    """
-    Diagnose regime persistence quality.
-    Returns dict with diagnostics and passes/fails.
-    """
+    
+    #Diagnose regime persistence quality.
+    #Returns dict with diagnostics and passes/fails.
+    
     if isinstance(labels, np.ndarray):
         labels = pd.Series(labels, name='regime')
     elif not isinstance(labels, pd.Series):
@@ -62,9 +62,9 @@ def diagnose_persistence(labels: pd.Series, min_days_threshold=21):
     return diagnostics
 
 def print_persistence_diagnostics(diagnostics):
-    """
-    Print formatted persistence diagnostics.
-    """
+    
+    #Print formatted persistence diagnostics.
+    
     print("\n" + "="*60)
     print("PERSISTENCE DIAGNOSTICS")
     print("="*60)
@@ -85,10 +85,10 @@ def print_persistence_diagnostics(diagnostics):
     print("="*60)
 
 def compute_economic_monotonicity(X: pd.DataFrame, regime_labels: pd.Series):
-    """
-    Compute mean feature values per regime (economic monotonicity check).
-    Returns DataFrame with regimes as rows, features as columns.
-    """
+    
+    #Compute mean feature values per regime (economic monotonicity check).
+    #Returns DataFrame with regimes as rows, features as columns.
+    
     if isinstance(regime_labels, np.ndarray):
         regime_labels = pd.Series(regime_labels, index=X.index, name='regime')
     
@@ -111,23 +111,88 @@ def compute_economic_monotonicity(X: pd.DataFrame, regime_labels: pd.Series):
         'counts': labels_aligned.value_counts().sort_index()
     }
 
-def print_economic_monotonicity(monotonicity_dict):
+def label_regimes_by_function(monotonicity_dict):
     """
-    Print formatted economic monotonicity table.
+    Map numeric regime IDs to descriptive labels based on economic characteristics.
+    Returns dict mapping numeric ID -> descriptive label.
     """
+    means = monotonicity_dict['means']
+    counts = monotonicity_dict['counts']
+    
+    # Identify regime characteristics
+    # Regime with highest vol + highest corr + lowest eff_dim = Crisis
+    # Regime with lowest vol + lowest corr + highest eff_dim = Calm
+    # Others = Transition/Elevated
+    
+    vol_col = [c for c in means.columns if 'avg_vol' in c.lower()][0]
+    corr_col = [c for c in means.columns if 'corr' in c.lower()][0]
+    effdim_col = [c for c in means.columns if 'effective' in c.lower() or 'eff_dim' in c.lower()][0]
+    
+    # Score each regime: higher = more crisis-like
+    crisis_scores = {}
+    for regime in means.index:
+        vol_rank = means.loc[regime, vol_col]  # Higher vol = more crisis
+        corr_rank = means.loc[regime, corr_col]  # Higher corr = more crisis
+        effdim_rank = -means.loc[regime, effdim_col]  # Lower eff_dim = more crisis (negate)
+        # Normalize and combine
+        crisis_scores[regime] = vol_rank + corr_rank + effdim_rank
+    
+    # Sort by crisis score
+    sorted_regimes = sorted(crisis_scores.items(), key=lambda x: x[1], reverse=True)
+    
+    # Label: highest score = Crisis, lowest = Calm, middle = Transition/Elevated
+    labels = {}
+    if len(sorted_regimes) == 3:
+        labels[sorted_regimes[0][0]] = "Crisis"
+        labels[sorted_regimes[1][0]] = "Transition"
+        labels[sorted_regimes[2][0]] = "Calm"
+    elif len(sorted_regimes) == 4:
+        labels[sorted_regimes[0][0]] = "Crisis"
+        labels[sorted_regimes[1][0]] = "Elevated Stress"
+        labels[sorted_regimes[2][0]] = "Transition"
+        labels[sorted_regimes[3][0]] = "Calm"
+    else:
+        # Generic labeling
+        labels[sorted_regimes[0][0]] = "Crisis"
+        labels[sorted_regimes[-1][0]] = "Calm"
+        for i, (regime, _) in enumerate(sorted_regimes[1:-1], 1):
+            labels[regime] = f"Transition {i}"
+    
+    return labels
+
+def print_economic_monotonicity(monotonicity_dict, use_descriptive_labels=True):
+    
+    #Print formatted economic monotonicity table.
+    
     means = monotonicity_dict['means']
     stds = monotonicity_dict['stds']
     counts = monotonicity_dict['counts']
+    
+    # Get descriptive labels if requested
+    regime_labels = None
+    if use_descriptive_labels:
+        try:
+            regime_labels = label_regimes_by_function(monotonicity_dict)
+        except:
+            regime_labels = None
     
     print("\n" + "="*60)
     print("ECONOMIC MONOTONICITY CHECK")
     print("="*60)
     print("\nMean feature values per regime:")
-    print(means.to_string())
+    
+    # Display with descriptive labels if available
+    if regime_labels:
+        means_display = means.copy()
+        means_display.index = [f"{idx} ({regime_labels[idx]})" for idx in means_display.index]
+        print(means_display.to_string())
+    else:
+        print(means.to_string())
     
     print("\n\nRegime sample sizes:")
     for regime, count in counts.items():
-        print(f"  Regime {regime}: {count} days ({count/252:.1f} years)")
+        label_str = f" ({regime_labels[regime]})" if regime_labels and regime in regime_labels else ""
+        print(f"  Regime {regime}{label_str}: {count} days ({count/252:.1f} years)")
     
     print("\n" + "-"*60)
     print("INTERPRETATION:")
@@ -138,12 +203,16 @@ def print_economic_monotonicity(monotonicity_dict):
     print("    - Different correlation patterns")
     print("    - Varying PC1 variance (market mode dominance)")
     print("    - Different effective dimensions (diversification)")
+    if regime_labels:
+        print(f"\n  Regime Labels: {regime_labels}")
     print("="*60)
+    
+    return regime_labels
 
 def summarize_clustering_evaluation(evals: dict):
-    """
-    Prints/returns a summary table of inertia, silhouette score, and mean/max regime persistence for each K.
-    """
+    
+    #Prints/returns a summary table of inertia, silhouette score, and mean/max regime persistence for each K.
+    
     rows = []
     for k, d in evals.items():
         labs = d['labels']
