@@ -245,6 +245,24 @@ def run_full_analysis(base_path="archive", generate_plots=True, save_plots_dir=N
             final_k=4,
             save_dir=regime_save_dir
         )
+        
+        # Step 8: Enhanced validation with index data
+        if regime_results and 'regime_labels' in regime_results:
+            from regime.validate import plot_regime_validation
+            print("\n" + "="*60)
+            print("STEP 8: ENHANCED VALIDATION (with Index Data)")
+            print("="*60)
+            try:
+                fig_val = plot_regime_validation(
+                    regime_labels=regime_results['regime_labels'],
+                    index_df=index_df,
+                    save_path=os.path.join(regime_save_dir, f"regime_validation_full_k{regime_results['k_used']}.png")
+                )
+                print("✓ Full validation plot with index data generated")
+                if not save_plots_dir:
+                    plt.show()
+            except Exception as e:
+                print(f"⚠ Could not generate enhanced validation plot: {e}")
 
     
 

@@ -20,8 +20,10 @@ from regime.evaluate import (
     diagnose_persistence,
     print_persistence_diagnostics,
     compute_economic_monotonicity,
-    print_economic_monotonicity
+    print_economic_monotonicity,
+    print_semantic_regime_labels
 )
+from regime.validate import plot_regime_validation, print_regime_event_alignment
 from regime.visualize_regimes import plot_regime_assignments, plot_umap_by_regime
 
 # Try to import from main analysis if available
@@ -128,6 +130,12 @@ def run_regime_pipeline(
     if regime_label_map is None:
         regime_label_map = {}
     
+    # Semantic Regime Labeling
+    print("\n" + "="*60)
+    print("STEP 7: SEMANTIC REGIME LABELING")
+    print("="*60)
+    print_semantic_regime_labels(monotonicity)
+    
     # 3. UMAP Separation Check
     print("\n[6.3] UMAP Separation Check...")
     # Try to find UMAP embedding
@@ -181,6 +189,20 @@ def run_regime_pipeline(
         plt.savefig(os.path.join(save_dir, f"regime_assignments_k{final_k}.png"), dpi=300, bbox_inches='tight')
         print(f"✓ Plot saved to {save_dir}/regime_assignments_k{final_k}.png")
     
+    # Validate Against Reality
+    print("\n" + "="*60)
+    print("STEP 8: VALIDATE AGAINST REALITY")
+    print("="*60)
+    
+    # Print regime-event alignment
+    print("\n[8.1] Regime-Event Alignment Check...")
+    print_regime_event_alignment(regime_labels, window_days=30)
+    
+    # Note: Full validation plot with index data will be generated in main.py
+    print("\n[8.2] Validation Plot:")
+    print("  → Full validation plot with index data will be generated in main.py")
+    fig_validation = None  # Will be created in main.py with index data
+    
     # Summary
     print("\n" + "="*60)
     print("REGIME QUALITY SUMMARY")
@@ -190,6 +212,8 @@ def run_regime_pipeline(
     print(f"  - Single-day runs: {persistence_diag['single_day_runs_pct']:.1f}%")
     print(f"\nEconomic Separation: Check monotonicity table above")
     print(f"UMAP Separation: {'✓ Generated' if fig_umap else '⚠ Skipped (no UMAP file)'}")
+    print(f"Semantic Labeling: ✓ Complete (see Step 7 above)")
+    print(f"Reality Validation: ✓ Event alignment checked (full plot in main.py)")
     print("\n" + "="*60)
     
     plt.show()

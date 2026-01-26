@@ -160,6 +160,75 @@ def label_regimes_by_function(monotonicity_dict):
     
     return labels
 
+def print_semantic_regime_labels(monotonicity_dict):
+    #Print detailed semantic characteristics for human labeling.
+    #Shows feature values and suggests semantic labels based on patterns.
+    means = monotonicity_dict['means']
+    counts = monotonicity_dict['counts']
+    
+    # Get feature column names
+    vol_col = [c for c in means.columns if 'avg_vol' in c.lower()][0]
+    corr_col = [c for c in means.columns if 'corr' in c.lower()][0]
+    effdim_col = [c for c in means.columns if 'effective' in c.lower() or 'eff_dim' in c.lower()][0]
+    pc1_col = [c for c in means.columns if 'pc1' in c.lower()][0]
+    
+    print("\n" + "="*70)
+    print("STEP 7: SEMANTIC REGIME LABELING (Human-in-the-loop)")
+    print("="*70)
+    print("\nDetailed characteristics per regime:")
+    print("-"*70)
+    
+    for regime in sorted(means.index):
+        vol_val = means.loc[regime, vol_col]
+        corr_val = means.loc[regime, corr_col]
+        effdim_val = means.loc[regime, effdim_col]
+        pc1_val = means.loc[regime, pc1_col]
+        count = counts[regime]
+        
+        # Determine relative positions
+        vol_rank = (means[vol_col] < vol_val).sum()  # Lower rank = lower vol
+        corr_rank = (means[corr_col] < corr_val).sum()
+        effdim_rank = (means[effdim_col] > effdim_val).sum()  # Higher rank = lower eff_dim
+        pc1_rank = (means[pc1_col] < pc1_val).sum()
+        
+        # Build semantic description
+        vol_desc = "low" if vol_rank == 0 else ("high" if vol_rank == len(means) - 1 else "moderate")
+        corr_desc = "low" if corr_rank == 0 else ("high" if corr_rank == len(means) - 1 else "moderate")
+        effdim_desc = "high" if effdim_rank == 0 else ("low" if effdim_rank == len(means) - 1 else "moderate")
+        pc1_desc = "low" if pc1_rank == 0 else ("high" if pc1_rank == len(means) - 1 else "moderate")
+        
+        print(f"\nRegime {regime}:")
+        print(f"  Sample size: {count} days ({count/252:.1f} years)")
+        print(f"  Characteristics:")
+        print(f"    • Volatility: {vol_desc} ({vol_val:.3f})")
+        print(f"    • Correlation: {corr_desc} ({corr_val:.3f})")
+        print(f"    • Effective Dimension: {effdim_desc} ({effdim_val:.2f})")
+        print(f"    • PC1 Variance: {pc1_desc} ({pc1_val:.3f})")
+        
+        # Suggest semantic label
+        if vol_rank == len(means) - 1 and corr_rank == len(means) - 1 and effdim_rank == len(means) - 1:
+            suggested = "Crisis / Risk-Off"
+        elif vol_rank == 0 and corr_rank == 0 and effdim_rank == 0:
+            suggested = "Calm / Diversified"
+        elif vol_rank > len(means) // 2 and corr_rank > len(means) // 2:
+            suggested = "Elevated Stress / Transition"
+        elif vol_rank < len(means) // 2 and corr_rank < len(means) // 2:
+            suggested = "Post-Crisis Normalization / Recovery"
+        else:
+            suggested = "Transition / Moderate Stress"
+        
+        print(f"  → Suggested Label: {suggested}")
+    
+    print("\n" + "-"*70)
+    print("⚠️  Labels come after statistics, not before.")
+    print("   Review characteristics above and assign semantic labels based on:")
+    print("   - Economic interpretation")
+    print("   - Historical context")
+    print("   - Your research question")
+    print("="*70)
+    
+    return means
+
 def print_economic_monotonicity(monotonicity_dict, use_descriptive_labels=True):
     
     #Print formatted economic monotonicity table.
