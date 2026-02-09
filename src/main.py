@@ -64,7 +64,7 @@ def run_full_analysis(base_path="archive", generate_plots=True, save_plots_dir=N
         )
 
     # Compute Rolling Statistics
-    windows = [21, 63, 252]  # 1 month, 1 quarter, 1 year
+    windows = [21, 63, 126, 252]  # 1 month, 1 quarter, 6 months, 1 year
     display.print_rolling_stats_info(windows, annualize=True)
     rolling_stats = analyze.compute_rolling_statistics(log_returns, windows=windows, annualize=True)
     display.print_rolling_stats_results(rolling_stats)
@@ -218,7 +218,58 @@ def run_full_analysis(base_path="archive", generate_plots=True, save_plots_dir=N
         if not save_plots_dir:
             display.print_all_complete()
             plt.show()
+
+    # Regime Clustering Pipeline
+    print("\n" + "="*60)
+    print("REGIME CLUSTERING")
+    print("="*60)
     
+    from regime.run_regime_clustering import run_regime_pipeline
+    
+    # Determine PCA metrics path (relative to project root)
+    if os.path.exists("../pca_data/rolling_pca_metrics.csv"):
+        pca_metrics_path = "../pca_data/rolling_pca_metrics.csv"
+    elif os.path.exists("pca_data/rolling_pca_metrics.csv"):
+        pca_metrics_path = "pca_data/rolling_pca_metrics.csv"
+    else:
+        print("Warning: Could not find rolling_pca_metrics.csv. Skipping regime clustering.")
+        pca_metrics_path = None
+    
+    if pca_metrics_path:
+        # Always save regime results to regime_results/ directory
+        regime_save_dir = save_plots_dir if save_plots_dir else "regime_results"
+        regime_results = run_regime_pipeline(
+            pca_metrics_path=pca_metrics_path,
+            rolling_stats=rolling_stats,
+            k_range=[3, 4, 5, 6],
+            final_k=4,
+            save_dir=regime_save_dir
+        )
+        
+        # Step 8: Enhanced validation with index data
+        if regime_results and 'regime_labels' in regime_results:
+            from regime.validate import plot_regime_validation
+            print("\n" + "="*60)
+            print("STEP 8: ENHANCED VALIDATION (with Index Data)")
+            print("="*60)
+            try:
+                fig_val = plot_regime_validation(
+                    regime_labels=regime_results['regime_labels'],
+                    index_df=index_df,
+                    save_path=os.path.join(regime_save_dir, f"regime_validation_full_k{regime_results['k_used']}.png")
+                )
+                print("✓ Full validation plot with index data generated")
+                if not save_plots_dir:
+                    plt.show()
+            except Exception as e:
+                print(f"⚠ Could not generate enhanced validation plot: {e}")
+
+    
+
+
+
+
+
     # Return all computed data for further use
     return {
         'price_matrix': price_matrix,

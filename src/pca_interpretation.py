@@ -1,10 +1,5 @@
-"""
-Generate an economic interpretation report for PC1-PC3 using:
- - src/pca_loadings.csv (features × PCs)
- - pca_data/rolling_pca_metrics.csv (time series of PC variances & eff_dim)
 
-Outputs: pca_interpretation.md in project root (or save_dir if provided).
-"""
+# Generate an economic interpretation report for PCA
 
 import os
 import re
@@ -13,13 +8,7 @@ import pandas as pd
 
 
 def parse_feature(name):
-    """
-    Parse feature name like:
-      - 'AAPL_vol_252' -> ('AAPL','vol','252')
-      - 'avg_pairwise_corr_252' -> (None,'avg_pairwise_corr','252')
-      - 'dispersion_63' -> (None,'dispersion','63')
-      - other -> (None, name, None)
-    """
+
     m = re.match(r'^(.+?)_(vol|skew|kurt)_(\d+)$', name)
     if m:
         return m.group(1), m.group(2), int(m.group(3))
