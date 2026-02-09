@@ -1,7 +1,4 @@
 # Standalone script to run regime clustering pipeline
-# Usage: python -m regime.run_regime_clustering
-# Or: cd src && python regime/run_regime_clustering.py
-
 import sys
 import os
 import pandas as pd
@@ -25,6 +22,13 @@ from regime.evaluate import (
 )
 from regime.validate import plot_regime_validation, print_regime_event_alignment
 from regime.visualize_regimes import plot_regime_assignments, plot_umap_by_regime
+from regime.transitions import compute_transition_statistics, print_transition_analysis
+from regime.visualize_transitions import (
+    plot_transition_matrix,
+    plot_regime_durations,
+    plot_transition_timeline,
+    plot_transition_network
+)
 
 # Try to import from main analysis if available
 try:
@@ -49,7 +53,7 @@ def run_regime_pipeline(
     print("REGIME CLUSTERING PIPELINE")
     print("="*60)
     
-    # Step 1: Build regime feature matrix
+    # Build regime feature matrix
     print("\n[Step 1] Building regime feature matrix...")
     if rolling_stats is None:
         print("Warning: rolling_stats not provided. Need to load from main analysis or files.")
@@ -76,12 +80,12 @@ def run_regime_pipeline(
     print(f"  Date range: {X.index.min()} to {X.index.max()}")
     print(f"  Features: {list(X.columns)}")
     
-    # Step 2: Normalize features
+    # Normalize features
     print("\n[Step 2] Normalizing features (z-score across time)...")
     X_norm = zscore_time(X)
     print(f"✓ Normalized feature matrix shape: {X_norm.shape}")
     
-    # Step 3 & 4: Evaluate different K values
+    # Evaluate different K values
     print(f"\n[Step 3 & 4] Evaluating K-means for K = {k_range}...")
     evals = evaluate_kmeans(X_norm, k_range=k_range)
     
@@ -101,7 +105,7 @@ def run_regime_pipeline(
     print("  → If multiple K pass, prefer lower K (simpler model)")
     print("  → If none pass, features may be too noisy or need different approach")
     
-    # Step 5: Fit final model with chosen K
+    # Fit final model with chosen K
     print(f"\n[Step 5] Fitting final K-means model with K={final_k}...")
     model, regime_labels = fit_kmeans_regimes(X_norm, k=final_k)
     persistence = compute_regime_persistence(regime_labels)
@@ -113,17 +117,17 @@ def run_regime_pipeline(
     print(f"\n  Mean persistence: {persistence.mean():.2f} days")
     print(f"  Max persistence: {persistence.max()} days")
     
-    # Step 6: Diagnose Regime Quality
+    # Diagnose Regime Quality
     print("\n" + "="*60)
     print("STEP 6: REGIME QUALITY DIAGNOSTICS")
     print("="*60)
     
-    # 1. Persistence Diagnostics
+    # Persistence Diagnostics
     print("\n[6.1] Persistence Check...")
     persistence_diag = diagnose_persistence(regime_labels, min_days_threshold=21)
     print_persistence_diagnostics(persistence_diag)
     
-    # 2. Economic Monotonicity
+    # Economic Monotonicity
     print("\n[6.2] Economic Monotonicity Check...")
     monotonicity = compute_economic_monotonicity(X, regime_labels)
     regime_label_map = print_economic_monotonicity(monotonicity, use_descriptive_labels=True)
@@ -136,7 +140,7 @@ def run_regime_pipeline(
     print("="*60)
     print_semantic_regime_labels(monotonicity)
     
-    # 3. UMAP Separation Check
+    # UMAP Separation Check
     print("\n[6.3] UMAP Separation Check...")
     # Try to find UMAP embedding
     umap_paths = [
@@ -203,6 +207,72 @@ def run_regime_pipeline(
     print("  → Full validation plot with index data will be generated in main.py")
     fig_validation = None  # Will be created in main.py with index data
     
+    #Regime Transition Analysis
+    print("\n" + "="*60)
+    print("STEP 9: REGIME TRANSITION ANALYSIS")
+    print("="*60)
+    
+    print("\n[9.1] Computing transition statistics...")
+    transition_stats = compute_transition_statistics(regime_labels)
+    
+    print("\n[9.2] Transition Analysis Report...")
+    print_transition_analysis(transition_stats, regime_label_map=regime_label_map)
+    
+    # Create subdirectory for transition analysis files
+    transition_save_dir = None
+    if save_dir:
+        transition_save_dir = os.path.join(save_dir, "regime_transition_analysis")
+        os.makedirs(transition_save_dir, exist_ok=True)
+        transition_matrix_path = os.path.join(transition_save_dir, f"transition_matrix_k{final_k}.csv")
+        transition_stats['transition_matrix'].to_csv(transition_matrix_path)
+        print(f"\n✓ Transition matrix saved to {transition_matrix_path}")
+    
+    # Generate transition visualizations
+    print("\n[9.3] Generating transition visualizations...")
+    try:
+        fig_trans_matrix = plot_transition_matrix(
+            transition_stats['transition_matrix'],
+            transition_stats['transition_counts'],
+            regime_label_map=regime_label_map,
+            save_path=os.path.join(transition_save_dir, f"transition_matrix_k{final_k}.png") if transition_save_dir else None
+        )
+        
+        fig_durations = plot_regime_durations(
+            transition_stats['durations'],
+            regime_label_map=regime_label_map,
+            save_path=os.path.join(transition_save_dir, f"regime_durations_k{final_k}.png") if transition_save_dir else None
+        )
+        
+        fig_timeline = plot_transition_timeline(
+            regime_labels,
+            regime_label_map=regime_label_map,
+            save_path=os.path.join(transition_save_dir, f"transition_timeline_k{final_k}.png") if transition_save_dir else None
+        )
+        
+        # Try network graph (requires networkx)
+        try:
+            fig_network = plot_transition_network(
+                transition_stats['transition_matrix'],
+                transition_stats['durations'],
+                regime_label_map=regime_label_map,
+                save_path=os.path.join(transition_save_dir, f"transition_network_k{final_k}.png") if transition_save_dir else None
+            )
+            if fig_network:
+                print("  ✓ Transition network graph generated")
+        except Exception as e:
+            print(f"  ⚠ Could not generate network graph: {e}")
+            fig_network = None
+        
+        print("  ✓ All transition visualizations generated")
+        if transition_save_dir:
+            print(f"  ✓ Plots saved to {transition_save_dir}/")
+    except Exception as e:
+        print(f"  ⚠ Error generating visualizations: {e}")
+        fig_trans_matrix = None
+        fig_durations = None
+        fig_timeline = None
+        fig_network = None
+    
     # Summary
     print("\n" + "="*60)
     print("REGIME QUALITY SUMMARY")
@@ -229,6 +299,7 @@ def run_regime_pipeline(
         'persistence': persistence,
         'persistence_diagnostics': persistence_diag,
         'economic_monotonicity': monotonicity,
+        'transition_stats': transition_stats,  # Added transition analysis results
         'k_used': final_k
     }
 

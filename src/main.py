@@ -246,7 +246,7 @@ def run_full_analysis(base_path="archive", generate_plots=True, save_plots_dir=N
             save_dir=regime_save_dir
         )
         
-        # Step 8: Enhanced validation with index data
+        # Enhanced validation with index data
         if regime_results and 'regime_labels' in regime_results:
             from regime.validate import plot_regime_validation
             print("\n" + "="*60)
