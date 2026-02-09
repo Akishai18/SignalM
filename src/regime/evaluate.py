@@ -205,15 +205,26 @@ def print_semantic_regime_labels(monotonicity_dict):
         print(f"    • Effective Dimension: {effdim_desc} ({effdim_val:.2f})")
         print(f"    • PC1 Variance: {pc1_desc} ({pc1_val:.3f})")
         
-        # Suggest semantic label
-        if vol_rank == len(means) - 1 and corr_rank == len(means) - 1 and effdim_rank == len(means) - 1:
+        # Suggest semantic label based on full feature profile
+        # Use nuanced logic to ensure each regime gets a unique, economically meaningful label
+        n_regimes = len(means)
+        
+        # Crisis: highest vol + highest corr + lowest eff_dim
+        if vol_rank == n_regimes - 1 and corr_rank == n_regimes - 1 and effdim_rank == n_regimes - 1:
             suggested = "Crisis / Risk-Off"
+        # Calm: lowest vol + lowest corr + highest eff_dim
         elif vol_rank == 0 and corr_rank == 0 and effdim_rank == 0:
-            suggested = "Calm / Diversified"
-        elif vol_rank > len(means) // 2 and corr_rank > len(means) // 2:
-            suggested = "Elevated Stress / Transition"
-        elif vol_rank < len(means) // 2 and corr_rank < len(means) // 2:
-            suggested = "Post-Crisis Normalization / Recovery"
+            suggested = "Calm / Expansion"
+        # Elevated Stress: moderate-high vol, moderate-high corr, but not extreme
+        elif vol_rank >= n_regimes // 2 and corr_rank >= n_regimes // 2 and effdim_rank > 0:
+            suggested = "Elevated Stress / Fragile"
+        # Transition: moderate features, often high PC1 (market mode building)
+        elif pc1_rank >= n_regimes // 2 and (vol_rank > 0 and vol_rank < n_regimes - 1):
+            suggested = "Transition / Normalization"
+        # Recovery/Post-Crisis: low vol, low corr, but moderate eff_dim (recovering)
+        elif vol_rank < n_regimes // 2 and corr_rank < n_regimes // 2 and effdim_rank < n_regimes - 1:
+            suggested = "Post-Crisis Recovery"
+        # Default: moderate stress
         else:
             suggested = "Transition / Moderate Stress"
         

@@ -5,20 +5,19 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 
 def fit_kmeans_regimes(X_norm, k:int, random_state=42):
-    """
-    Fit KMeans clustering on normalized feature matrix.
-    Returns: kmeans, labels (pd.Series, index=X.index)
-    """
+    #Fit KMeans clustering on normalized feature matrix.
+    #Returns: kmeans, labels (pd.Series, index=X.index)
+
     model = KMeans(n_clusters=k, random_state=random_state)
     labels = model.fit_predict(X_norm.values)
     return model, pd.Series(labels, index=X_norm.index, name=f'regime_k{k}')
 
 
 def evaluate_kmeans(X_norm, k_range=[3,4,5,6], random_state=42):
-    """
-    For each K, fit model, compute inertia and silhouette score.
-    Returns dict: K -> { model, labels, inertia, sil }
-    """
+    
+    #For each K, fit model, compute inertia and silhouette score.
+    #Returns dict: K -> { model, labels, inertia, sil }
+    
     results = {}
     for k in k_range:
         model = KMeans(n_clusters=k, random_state=random_state)

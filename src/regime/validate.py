@@ -202,44 +202,90 @@ def print_regime_event_alignment(regime_labels, window_days=30):
     print("-"*60)
     
     for event_name, event_date in relevant_events.items():
-        # Find closest date
-        # Compute time differences as a Series
-        time_diffs = pd.Series(
-            np.abs((regime_labels.index - event_date).days),
-            index=regime_labels.index
-        )
-        closest_idx = time_diffs.idxmin()
-        closest_date = closest_idx  # idxmin() returns the index value directly
-        days_diff = time_diffs.min()
-        regime_at_event = regime_labels.loc[closest_date]
-        
-        # Check if there was a regime switch near this event (within window)
-        # Look for regime changes within ±window_days of the event
+        # Define event window
         event_window_start = event_date - pd.Timedelta(days=window_days)
         event_window_end = event_date + pd.Timedelta(days=window_days)
         window_mask = (regime_labels.index >= event_window_start) & (regime_labels.index <= event_window_end)
         regimes_in_window = regime_labels[window_mask]
         
-        # Count regime switches in window
-        if len(regimes_in_window) > 1:
-            switches_in_window = (regimes_in_window != regimes_in_window.shift()).sum() - 1
-            unique_regimes_in_window = regimes_in_window.unique()
-        else:
-            switches_in_window = 0
-            unique_regimes_in_window = [regime_at_event]
+        if len(regimes_in_window) == 0:
+            print(f"{event_name:25s} ({event_date.strftime('%Y-%m-%d')}):")
+            print(f"  → No regime data in window")
+            print()
+            continue
         
-        if days_diff <= window_days:
+        # Find closest date to event
+        time_diffs = pd.Series(
+            np.abs((regime_labels.index - event_date).days),
+            index=regime_labels.index
+        )
+        closest_idx = time_diffs.idxmin()
+        closest_date = closest_idx
+        days_diff = time_diffs.min()
+        regime_at_event = regime_labels.loc[closest_date]
+        
+        # Detect regime transitions within the window
+        # A transition is defined as a change from one regime to another
+        transitions = []
+        if len(regimes_in_window) > 1:
+            # Find all regime changes in the window
+            # shift() creates NaN for first row, so != marks first row as True
+            # We want to find actual transitions, so we look for changes between consecutive dates
+            for i in range(1, len(regimes_in_window)):
+                prev_date = regimes_in_window.index[i-1]
+                curr_date = regimes_in_window.index[i]
+                prev_regime = regimes_in_window.iloc[i-1]
+                curr_regime = regimes_in_window.iloc[i]
+                
+                if prev_regime != curr_regime:
+                    # This is a transition: prev_regime -> curr_regime at curr_date
+                    # Check if this transition is near the event (within window)
+                    transition_date = curr_date
+                    days_from_event = abs((transition_date - event_date).days)
+                    
+                    # Transition is already in window (we're iterating over window), so just check distance
+                    transitions.append({
+                        'from_regime': prev_regime,
+                        'to_regime': curr_regime,
+                        'date': transition_date,
+                        'days_from_event': days_from_event
+                    })
+        
+        # Determine if event triggered a regime transition
+        unique_regimes_in_window = sorted(regimes_in_window.unique().tolist())
+        has_transition = len(transitions) > 0
+        
+        # Reframe interpretation: focus on transitions, not just regime at date
+        if has_transition:
+            # Event triggered a regime change
             status = "✓ ALIGNED"
-            # Get regime characteristics for context
+            print(f"{event_name:25s} ({event_date.strftime('%Y-%m-%d')}):")
+            
+            # Report the most relevant transition (closest to event)
+            if transitions:
+                best_transition = min(transitions, key=lambda x: x['days_from_event'])
+                print(f"  → Triggered transition: Regime {best_transition['from_regime']} → Regime {best_transition['to_regime']}")
+                print(f"  → Transition date: {best_transition['date'].strftime('%Y-%m-%d')} ({best_transition['days_from_event']} days from event)")
+            
+            if len(transitions) > 1:
+                print(f"  → Total transitions in window: {len(transitions)}")
+            print(f"  → Regimes in window: {unique_regimes_in_window}")
+            print(f"  → {status} (event caused regime change)")
+            
+        elif days_diff <= window_days:
+            # Event is within window but no transition detected
+            # This could mean event occurred during a stable regime period
+            status = "⚠ PARTIAL"
             regime_duration = (regime_labels == regime_at_event).sum()
             print(f"{event_name:25s} ({event_date.strftime('%Y-%m-%d')}):")
-            print(f"  → Regime {regime_at_event} at {closest_date.strftime('%Y-%m-%d')} ({days_diff} days away)")
+            print(f"  → Event occurred during Regime {regime_at_event} (stable period)")
+            print(f"  → Closest date: {closest_date.strftime('%Y-%m-%d')} ({days_diff} days away)")
             print(f"  → Regime {regime_at_event} duration: {regime_duration} days ({regime_duration/252:.1f} years)")
-            if switches_in_window > 0:
-                print(f"  → Regime switches in ±{window_days} day window: {switches_in_window}")
-                print(f"  → Regimes in window: {sorted(unique_regimes_in_window.tolist())}")
-            print(f"  → {status}")
+            if len(unique_regimes_in_window) > 1:
+                print(f"  → Regimes in window: {unique_regimes_in_window}")
+            print(f"  → {status} (no transition detected, event may not have triggered regime change)")
         else:
+            # Event is far from any regime data
             status = "⚠ FAR"
             print(f"{event_name:25s} ({event_date.strftime('%Y-%m-%d')}):")
             print(f"  → Closest regime: {regime_at_event} at {closest_date.strftime('%Y-%m-%d')} ({days_diff} days away)")
@@ -248,7 +294,10 @@ def print_regime_event_alignment(regime_labels, window_days=30):
     
     print("="*60)
     print("Interpretation:")
-    print("  ✓ ALIGNED: Regime change aligns with known market event (plausible)")
-    print("  ⚠ FAR: Regime change doesn't align (may indicate false positive or different driver)")
+    print("  ✓ ALIGNED: Event triggered a regime transition within ±N days")
+    print("  ⚠ PARTIAL: Event occurred during stable regime (no transition detected)")
+    print("  ⚠ FAR: Event is far from regime data (outside ±N day window)")
+    print("\nKey insight: We check if events CAUSED regime changes, not just")
+    print("whether events occurred during a particular regime.")
     print("="*60)
 
