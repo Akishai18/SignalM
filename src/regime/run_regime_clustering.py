@@ -29,6 +29,7 @@ from regime.visualize_transitions import (
     plot_transition_timeline,
     plot_transition_network
 )
+from regime.evaluate_transitions import print_transition_diagnostics
 
 # Try to import from main analysis if available
 try:
@@ -218,6 +219,14 @@ def run_regime_pipeline(
     print("\n[9.2] Transition Analysis Report...")
     print_transition_analysis(transition_stats, regime_label_map=regime_label_map)
     
+    print("\n[9.3] Transition Diagnostics...")
+    diagnostics_results = print_transition_diagnostics(
+        transition_stats['transition_matrix'],
+        transition_stats['transition_counts'],
+        regime_labels,
+        regime_label_map=regime_label_map
+    )
+    
     # Create subdirectory for transition analysis files
     transition_save_dir = None
     if save_dir:
@@ -228,7 +237,7 @@ def run_regime_pipeline(
         print(f"\n✓ Transition matrix saved to {transition_matrix_path}")
     
     # Generate transition visualizations
-    print("\n[9.3] Generating transition visualizations...")
+    print("\n[9.4] Generating transition visualizations...")
     try:
         fig_trans_matrix = plot_transition_matrix(
             transition_stats['transition_matrix'],
@@ -300,6 +309,7 @@ def run_regime_pipeline(
         'persistence_diagnostics': persistence_diag,
         'economic_monotonicity': monotonicity,
         'transition_stats': transition_stats,  # Added transition analysis results
+        'transition_diagnostics': diagnostics_results,  # Added transition diagnostics
         'k_used': final_k
     }
 
