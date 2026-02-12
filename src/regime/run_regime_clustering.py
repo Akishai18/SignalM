@@ -30,6 +30,7 @@ from regime.visualize_transitions import (
     plot_transition_network
 )
 from regime.evaluate_transitions import print_transition_diagnostics
+from regime.cross_validation import split_data_chronologically, print_split_summary
 
 # Try to import from main analysis if available
 try:
@@ -282,6 +283,32 @@ def run_regime_pipeline(
         fig_timeline = None
         fig_network = None
     
+    # Step 10: Out-of-sample Validation
+    print("\n" + "="*60)
+    print("STEP 10: OUT-OF-SAMPLE VALIDATION")
+    print("="*60)
+    
+    print("\n[10.1] Splitting data chronologically...")
+    try:
+        # Split data: 70% train, 30% test (or use split_date if preferred)
+        split_data = split_data_chronologically(
+            regime_labels=regime_labels,
+            feature_matrix=X,  # Use original feature matrix (before normalization)
+            train_ratio=0.7,
+            test_ratio=0.3
+        )
+        
+        print("\n[10.2] Train/Test Split Summary...")
+        split_info = print_split_summary(split_data)
+        
+        print("\n✓ Out-of-sample validation split completed")
+        print("  → Next: Compare regimes across train/test periods (coming in next step)")
+        
+    except Exception as e:
+        print(f"  ⚠ Error performing cross-validation split: {e}")
+        split_data = None
+        split_info = None
+    
     # Summary
     print("\n" + "="*60)
     print("REGIME QUALITY SUMMARY")
@@ -310,6 +337,7 @@ def run_regime_pipeline(
         'economic_monotonicity': monotonicity,
         'transition_stats': transition_stats,  # Added transition analysis results
         'transition_diagnostics': diagnostics_results,  # Added transition diagnostics
+        'cross_validation_split': split_data,  # Added train/test split
         'k_used': final_k
     }
 
