@@ -1,8 +1,7 @@
 import matplotlib.pyplot as plt
-import analyze
-import display
-import visualize
-import pca
+from analysis import analyze, pca, pca_interpretation
+from visualization import visualize, umap_embed
+from utils import display
 import numpy as np
 import os
 
