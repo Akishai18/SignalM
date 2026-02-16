@@ -30,11 +30,24 @@ from regime.visualize_transitions import (
     plot_transition_network
 )
 from regime.evaluate_transitions import print_transition_diagnostics
-from regime.cross_validation import split_data_chronologically, print_split_summary
+from regime.cross_validation import (
+    split_data_chronologically, 
+    print_split_summary,
+    train_test_regime_detection,
+    compare_regime_characteristics,
+    check_regime_stability,
+    print_cross_period_validation
+)
+from regime.validation_metrics import compute_all_validation_metrics, print_validation_metrics_report
+from regime.visualize_validation import (
+    plot_train_test_regime_timeline,
+    plot_transition_matrix_comparison,
+    plot_regime_distribution_comparison
+)
 
 # Try to import from main analysis if available
 try:
-    import analyze
+    from analysis import analyze
     from main import run_full_analysis
     USE_MAIN_ANALYSIS = True
 except ImportError:
@@ -288,6 +301,13 @@ def run_regime_pipeline(
     print("STEP 10: OUT-OF-SAMPLE VALIDATION")
     print("="*60)
     
+    # Initialize variables
+    split_data = None
+    split_info = None
+    train_test_results = None
+    comparison_stats = None
+    stability_results = None
+    
     print("\n[10.1] Splitting data chronologically...")
     try:
         # Split data: 70% train, 30% test (or use split_date if preferred)
@@ -301,13 +321,110 @@ def run_regime_pipeline(
         print("\n[10.2] Train/Test Split Summary...")
         split_info = print_split_summary(split_data)
         
-        print("\n✓ Out-of-sample validation split completed")
-        print("  → Next: Compare regimes across train/test periods (coming in next step)")
+        # Cross-period validation: Train on period 1, test on period 2
+        print("\n[10.3] Cross-Period Validation...")
+        print("  Training model on training period, applying to test period...")
+        
+        try:
+            # Train model on training data, apply to test data
+            train_test_results = train_test_regime_detection(
+                train_features=split_data['train_features'],
+                test_features=split_data['test_features'],
+                k=final_k,
+                random_state=42
+            )
+            
+            # Compare regime characteristics across periods
+            print("  Comparing regime characteristics across periods...")
+            comparison_stats = compare_regime_characteristics(
+                train_features=split_data['train_features'],
+                train_labels=train_test_results['train_labels'],
+                test_features=split_data['test_features'],
+                test_labels=train_test_results['test_labels']
+            )
+            
+            # Check regime stability
+            print("  Checking regime stability...")
+            stability_results = check_regime_stability(
+                train_labels=train_test_results['train_labels'],
+                test_labels=train_test_results['test_labels'],
+                comparison_stats=comparison_stats
+            )
+            
+            # Print comprehensive validation results
+            print("\n[10.4] Cross-Period Validation Results...")
+            print_cross_period_validation(
+                comparison_stats=comparison_stats,
+                stability_results=stability_results,
+                regime_label_map=regime_label_map
+            )
+            
+            # Compute comprehensive validation metrics
+            print("\n[10.5] Comprehensive Validation Metrics...")
+            validation_metrics = compute_all_validation_metrics(
+                train_features=split_data['train_features'],
+                train_labels=train_test_results['train_labels'],
+                test_features=split_data['test_features'],
+                test_labels=train_test_results['test_labels']
+            )
+            print_validation_metrics_report(validation_metrics, regime_label_map=regime_label_map)
+            
+            # Generate validation visualizations
+            print("\n[10.6] Generating Validation Visualizations...")
+            try:
+                validation_save_dir = None
+                if save_dir:
+                    validation_save_dir = os.path.join(save_dir, "cross_validation")
+                    os.makedirs(validation_save_dir, exist_ok=True)
+                
+                # Side-by-side regime timelines
+                fig_timeline = plot_train_test_regime_timeline(
+                    train_labels=train_test_results['train_labels'],
+                    test_labels=train_test_results['test_labels'],
+                    split_date=split_info['split_date'],
+                    regime_label_map=regime_label_map,
+                    save_path=os.path.join(validation_save_dir, f"train_test_timeline_k{final_k}.png") if validation_save_dir else None
+                )
+                
+                # Transition matrix comparison
+                fig_trans_comp = plot_transition_matrix_comparison(
+                    train_transition_matrix=validation_metrics['transition_stability']['train_transition_matrix'],
+                    test_transition_matrix=validation_metrics['transition_stability']['test_transition_matrix'],
+                    regime_label_map=regime_label_map,
+                    save_path=os.path.join(validation_save_dir, f"transition_comparison_k{final_k}.png") if validation_save_dir else None
+                )
+                
+                # Regime distribution comparison
+                fig_dist = plot_regime_distribution_comparison(
+                    train_labels=train_test_results['train_labels'],
+                    test_labels=train_test_results['test_labels'],
+                    regime_label_map=regime_label_map,
+                    save_path=os.path.join(validation_save_dir, f"regime_distribution_comparison_k{final_k}.png") if validation_save_dir else None
+                )
+                
+                print("  ✓ All validation visualizations generated")
+                if validation_save_dir:
+                    print(f"  ✓ Plots saved to {validation_save_dir}/")
+                    
+            except Exception as e:
+                print(f"  ⚠ Error generating validation visualizations: {e}")
+                import traceback
+                traceback.print_exc()
+            
+            print("\n✓ Cross-period validation completed")
+            
+        except Exception as e:
+            print(f"  ⚠ Error performing cross-period validation: {e}")
+            import traceback
+            traceback.print_exc()
+            train_test_results = None
+            comparison_stats = None
+            stability_results = None
         
     except Exception as e:
         print(f"  ⚠ Error performing cross-validation split: {e}")
-        split_data = None
-        split_info = None
+        import traceback
+        traceback.print_exc()
     
     # Summary
     print("\n" + "="*60)
@@ -338,6 +455,12 @@ def run_regime_pipeline(
         'transition_stats': transition_stats,  # Added transition analysis results
         'transition_diagnostics': diagnostics_results,  # Added transition diagnostics
         'cross_validation_split': split_data,  # Added train/test split
+        'cross_validation_results': {
+            'train_test_results': train_test_results if 'train_test_results' in locals() else None,
+            'comparison_stats': comparison_stats if 'comparison_stats' in locals() else None,
+            'stability_results': stability_results if 'stability_results' in locals() else None,
+            'validation_metrics': validation_metrics if 'validation_metrics' in locals() else None
+        },
         'k_used': final_k
     }
 
