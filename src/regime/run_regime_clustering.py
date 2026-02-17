@@ -44,6 +44,13 @@ from regime.visualize_validation import (
     plot_transition_matrix_comparison,
     plot_regime_distribution_comparison
 )
+from regime.predict import (
+    predict_next_regime_baseline,
+    predict_regime_sequence_baseline,
+    compute_prediction_accuracy_baseline,
+    print_baseline_prediction,
+    print_prediction_accuracy
+)
 
 # Try to import from main analysis if available
 try:
@@ -307,6 +314,8 @@ def run_regime_pipeline(
     train_test_results = None
     comparison_stats = None
     stability_results = None
+    validation_metrics = None
+    accuracy_results = None
     
     print("\n[10.1] Splitting data chronologically...")
     try:
@@ -426,6 +435,45 @@ def run_regime_pipeline(
         import traceback
         traceback.print_exc()
     
+    # Step 11: Regime Prediction (Baseline Method)
+    print("\n" + "="*60)
+    print("STEP 11: REGIME PREDICTION (BASELINE)")
+    print("="*60)
+    
+    print("\n[11.1] Baseline Prediction Method (Markov Chain)...")
+    print("  Using historical transition probabilities to predict future regimes")
+    
+    try:
+        # Get current regime (most recent)
+        current_regime = regime_labels.iloc[-1]
+        current_date = regime_labels.index[-1]
+        
+        print(f"\n  Current Regime: {current_regime} (as of {current_date.strftime('%Y-%m-%d')})")
+        
+        # Show prediction for current regime
+        print_baseline_prediction(
+            current_regime=current_regime,
+            transition_matrix=transition_stats['transition_matrix'],
+            regime_label_map=regime_label_map,
+            horizon=30
+        )
+        
+        # Compute prediction accuracy on historical data
+        print("\n[11.2] Computing Prediction Accuracy on Historical Data...")
+        accuracy_results = compute_prediction_accuracy_baseline(
+            regime_labels=regime_labels,
+            transition_matrix=transition_stats['transition_matrix'],
+            test_start_idx=None  # Use all data for now
+        )
+        print_prediction_accuracy(accuracy_results, regime_label_map=regime_label_map)
+        
+        print("\n✓ Baseline prediction completed")
+        
+    except Exception as e:
+        print(f"  ⚠ Error performing baseline prediction: {e}")
+        import traceback
+        traceback.print_exc()
+    
     # Summary
     print("\n" + "="*60)
     print("REGIME QUALITY SUMMARY")
@@ -460,6 +508,9 @@ def run_regime_pipeline(
             'comparison_stats': comparison_stats if 'comparison_stats' in locals() else None,
             'stability_results': stability_results if 'stability_results' in locals() else None,
             'validation_metrics': validation_metrics if 'validation_metrics' in locals() else None
+        },
+        'prediction_results': {
+            'baseline_accuracy': accuracy_results if 'accuracy_results' in locals() else None
         },
         'k_used': final_k
     }
