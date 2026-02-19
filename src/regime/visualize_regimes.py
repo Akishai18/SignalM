@@ -39,8 +39,6 @@ def plot_centroid_spider(models, X_cols, k: int, ax=None):
 
 def plot_umap_by_regime(umap_df, regime_labels, umap_path=None, ax=None, figsize=(10, 8)):
     #Plot UMAP embedding colored by regime labels.
-    #This is a key diagnostic: regimes should form contiguous regions, not random salt-and-pepper.
-    #
     #Note: Disconnected clusters of the same color reflect regime recurrence - similar market
     #structures appearing at different points in time. UMAP preserves local neighborhood structure,
     #not time continuity, so the market can revisit the same regime geometry years apart.

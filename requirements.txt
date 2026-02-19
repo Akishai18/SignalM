@@ -5,3 +5,4 @@ seaborn>=0.11
 scipy>=1.7
 umap-learn>=0.5.1
 scikit-learn>=0.24xxs
+hmmlearn>=0.2.4

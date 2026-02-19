@@ -228,12 +228,13 @@ def print_baseline_prediction(
 
 def print_prediction_accuracy(
     accuracy_results: Dict,
-    regime_label_map: Optional[Dict] = None
+    regime_label_map: Optional[Dict] = None,
+    title: str = "BASELINE PREDICTION ACCURACY"
 ):
     #Print prediction accuracy results.
     
     print("\n" + "="*70)
-    print("BASELINE PREDICTION ACCURACY")
+    print(title)
     print("="*70)
     
     print(f"\nOverall Accuracy: {accuracy_results['accuracy']:.2%}")

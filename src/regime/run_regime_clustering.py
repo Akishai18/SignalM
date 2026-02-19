@@ -51,6 +51,14 @@ from regime.predict import (
     print_baseline_prediction,
     print_prediction_accuracy
 )
+from regime.hmm_predict import (
+    fit_hmm_to_regimes,
+    predict_next_regime_hmm,
+    predict_regime_probabilities_hmm,
+    compute_hmm_accuracy,
+    print_hmm_prediction,
+    print_hmm_model_summary
+)
 
 # Try to import from main analysis if available
 try:
@@ -474,6 +482,65 @@ def run_regime_pipeline(
         import traceback
         traceback.print_exc()
     
+    # Step 12: HMM Prediction (Advanced Method)
+    print("\n" + "="*60)
+    print("STEP 12: HMM PREDICTION (ADVANCED)")
+    print("="*60)
+    
+    hmm_model = None
+    hmm_accuracy = None
+    
+    try:
+        print("\n[12.1] Fitting Hidden Markov Model...")
+        print("  Learning transition and emission probabilities from data...")
+        
+        # Fit HMM to regime sequence
+        hmm_model = fit_hmm_to_regimes(
+            regime_labels=regime_labels,
+            feature_matrix=X,  # Use original feature matrix
+            n_regimes=final_k,
+            n_iter=100,
+            random_state=42
+        )
+        
+        print("\n[12.2] HMM Model Summary...")
+        print_hmm_model_summary(hmm_model, regime_label_map=regime_label_map)
+        
+        # Predict using HMM
+        print("\n[12.3] HMM Prediction for Current State...")
+        current_date = regime_labels.index[-1]
+        current_features = X.loc[current_date].values
+        actual_current_regime = int(regime_labels.loc[current_date])  # Get actual K-means label
+        
+        print_hmm_prediction(
+            hmm_model=hmm_model,
+            current_features=current_features,
+            current_date=current_date,
+            regime_label_map=regime_label_map,
+            horizon=30,
+            actual_current_regime=actual_current_regime
+        )
+        
+        # Compute HMM accuracy
+        print("\n[12.4] Computing HMM Prediction Accuracy...")
+        hmm_accuracy = compute_hmm_accuracy(
+            hmm_model=hmm_model,
+            feature_matrix=X,
+            regime_labels=regime_labels,
+            test_start_idx=None
+        )
+        print_prediction_accuracy(hmm_accuracy, regime_label_map=regime_label_map, title="HMM PREDICTION ACCURACY")
+        
+        print("\n✓ HMM prediction completed")
+        
+    except ImportError as e:
+        print(f"  ⚠ hmmlearn not installed: {e}")
+        print("  Install with: pip install hmmlearn")
+    except Exception as e:
+        print(f"  ⚠ Error performing HMM prediction: {e}")
+        import traceback
+        traceback.print_exc()
+    
     # Summary
     print("\n" + "="*60)
     print("REGIME QUALITY SUMMARY")
@@ -510,7 +577,9 @@ def run_regime_pipeline(
             'validation_metrics': validation_metrics if 'validation_metrics' in locals() else None
         },
         'prediction_results': {
-            'baseline_accuracy': accuracy_results if 'accuracy_results' in locals() else None
+            'baseline_accuracy': accuracy_results if 'accuracy_results' in locals() else None,
+            'hmm_model': hmm_model if 'hmm_model' in locals() else None,
+            'hmm_accuracy': hmm_accuracy if 'hmm_accuracy' in locals() else None
         },
         'k_used': final_k
     }
