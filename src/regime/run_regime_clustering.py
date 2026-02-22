@@ -44,6 +44,29 @@ from regime.visualize_validation import (
     plot_transition_matrix_comparison,
     plot_regime_distribution_comparison
 )
+from regime.predict import (
+    predict_next_regime_baseline,
+    predict_regime_sequence_baseline,
+    compute_prediction_accuracy_baseline,
+    print_baseline_prediction,
+    print_prediction_accuracy
+)
+from regime.hmm_predict import (
+    fit_hmm_to_regimes,
+    predict_next_regime_hmm,
+    predict_regime_probabilities_hmm,
+    compute_hmm_accuracy,
+    print_hmm_prediction,
+    print_hmm_model_summary
+)
+from regime.feature_predict import (
+    build_prediction_dataset,
+    build_current_feature_vector,
+    train_all_predictors,
+    predict_future_regimes,
+    compute_baseline_accuracy_by_horizon,
+    print_feature_prediction_results
+)
 
 # Try to import from main analysis if available
 try:
@@ -307,6 +330,8 @@ def run_regime_pipeline(
     train_test_results = None
     comparison_stats = None
     stability_results = None
+    validation_metrics = None
+    accuracy_results = None
     
     print("\n[10.1] Splitting data chronologically...")
     try:
@@ -426,6 +451,197 @@ def run_regime_pipeline(
         import traceback
         traceback.print_exc()
     
+    # Step 11: Regime Prediction (Baseline Method)
+    print("\n" + "="*60)
+    print("STEP 11: REGIME PREDICTION (BASELINE)")
+    print("="*60)
+    
+    print("\n[11.1] Baseline Prediction Method (Markov Chain)...")
+    print("  Using historical transition probabilities to predict future regimes")
+    
+    try:
+        # Get current regime (most recent)
+        current_regime = regime_labels.iloc[-1]
+        current_date = regime_labels.index[-1]
+        
+        print(f"\n  Current Regime: {current_regime} (as of {current_date.strftime('%Y-%m-%d')})")
+        
+        # Show prediction for current regime
+        print_baseline_prediction(
+            current_regime=current_regime,
+            transition_matrix=transition_stats['transition_matrix'],
+            regime_label_map=regime_label_map,
+            horizon=30
+        )
+        
+        # Compute prediction accuracy on historical data
+        print("\n[11.2] Computing Prediction Accuracy on Historical Data...")
+        accuracy_results = compute_prediction_accuracy_baseline(
+            regime_labels=regime_labels,
+            transition_matrix=transition_stats['transition_matrix'],
+            test_start_idx=None  # Use all data for now
+        )
+        print_prediction_accuracy(accuracy_results, regime_label_map=regime_label_map)
+        
+        print("\n✓ Baseline prediction completed")
+        
+    except Exception as e:
+        print(f"  ⚠ Error performing baseline prediction: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    # Step 12: HMM Prediction (Advanced Method)
+    print("\n" + "="*60)
+    print("STEP 12: HMM PREDICTION (ADVANCED)")
+    print("="*60)
+    
+    hmm_model = None
+    hmm_accuracy = None
+    
+    try:
+        print("\n[12.1] Fitting Hidden Markov Model...")
+        print("  Learning transition and emission probabilities from data...")
+        
+        # Fit HMM to regime sequence
+        hmm_model = fit_hmm_to_regimes(
+            regime_labels=regime_labels,
+            feature_matrix=X,  # Use original feature matrix
+            n_regimes=final_k,
+            n_iter=100,
+            random_state=42
+        )
+        
+        print("\n[12.2] HMM Model Summary...")
+        print_hmm_model_summary(hmm_model, regime_label_map=regime_label_map)
+        
+        # Predict using HMM
+        print("\n[12.3] HMM Prediction for Current State...")
+        current_date = regime_labels.index[-1]
+        current_features = X.loc[current_date].values
+        actual_current_regime = int(regime_labels.loc[current_date])  # Get actual K-means label
+        
+        print_hmm_prediction(
+            hmm_model=hmm_model,
+            current_features=current_features,
+            current_date=current_date,
+            regime_label_map=regime_label_map,
+            horizon=30,
+            actual_current_regime=actual_current_regime
+        )
+        
+        # Compute HMM accuracy
+        print("\n[12.4] Computing HMM Prediction Accuracy...")
+        hmm_accuracy = compute_hmm_accuracy(
+            hmm_model=hmm_model,
+            feature_matrix=X,
+            regime_labels=regime_labels,
+            test_start_idx=None
+        )
+        print_prediction_accuracy(hmm_accuracy, regime_label_map=regime_label_map, title="HMM PREDICTION ACCURACY")
+        
+        print("\n✓ HMM prediction completed")
+        
+    except ImportError as e:
+        print(f"  ⚠ hmmlearn not installed: {e}")
+        print("  Install with: pip install hmmlearn")
+    except Exception as e:
+        print(f"  ⚠ Error performing HMM prediction: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    # Step 13: Feature-Based Prediction (Random Forest + XGBoost)
+    print("\n" + "="*60)
+    print("STEP 13: FEATURE-BASED PREDICTION (RF + XGBoost)")
+    print("="*60)
+
+    feature_prediction_results = None
+    future_preds = None
+
+    try:
+        print("\n[13.1] Building prediction dataset...")
+        print("  Features: current + lagged (1d/5d/21d) + rate-of-change (NO current regime)")
+        print("  → Forcing models to predict purely from market features")
+
+        prediction_data = build_prediction_dataset(
+            feature_matrix=X_norm,
+            regime_labels=regime_labels,
+            horizons=[1, 7, 30],
+            lags=[1, 5, 21],
+            include_current_regime=False
+        )
+
+        for h, d in prediction_data['datasets'].items():
+            print(f"  {h}d horizon: {len(d['X'])} samples, {len(d['X'].columns)} features")
+
+        print("\n[13.2] Training Random Forest and XGBoost (70/30 chronological split)...")
+        feature_prediction_results = train_all_predictors(
+            prediction_data=prediction_data,
+            train_ratio=0.7
+        )
+
+        print("\n[13.3] Computing Markov baseline accuracy by horizon (test period)...")
+        baseline_by_horizon = compute_baseline_accuracy_by_horizon(
+            regime_labels=regime_labels,
+            transition_matrix=transition_stats['transition_matrix'],
+            horizons=[1, 7, 30],
+            train_ratio=0.7
+        )
+        for h, acc in baseline_by_horizon.items():
+            print(f"  Baseline {h}d: {acc:.2%}")
+
+        print("\n[13.4] Predicting from current date...")
+        current_feature_vec = build_current_feature_vector(
+            feature_matrix=X_norm,
+            regime_labels=regime_labels
+        )
+        current_regime_val = int(regime_labels.iloc[-1])
+
+        # Align feature vector columns to each horizon's training columns
+        aligned_predictions = {}
+        for horizon, hdata in feature_prediction_results.items():
+            dataset_X = prediction_data['datasets'][horizon]['X']
+            train_cols = dataset_X.columns.tolist()
+            current_aligned = current_feature_vec.reindex(columns=train_cols, fill_value=0.0)
+
+            preds_h = {}
+            for model_key, model_data in hdata['models'].items():
+                model = model_data['model']
+                try:
+                    y_pred = int(model.predict(current_aligned)[0])
+                    try:
+                        proba = model.predict_proba(current_aligned)[0]
+                        classes = model.classes_
+                        prob_dict = {int(c): float(p) for c, p in zip(classes, proba)}
+                        confidence = float(proba.max())
+                    except Exception:
+                        prob_dict = {y_pred: 1.0}
+                        confidence = 1.0
+                    preds_h[model_key] = {
+                        'predicted_regime': y_pred,
+                        'confidence': confidence,
+                        'probabilities': prob_dict
+                    }
+                except Exception as e:
+                    preds_h[model_key] = {'error': str(e)}
+            aligned_predictions[horizon] = preds_h
+
+        future_preds = aligned_predictions
+
+        print("\n[13.5] Feature-Based Prediction Results...")
+        print_feature_prediction_results(
+            trained_results=feature_prediction_results,
+            future_predictions=future_preds,
+            regime_label_map=regime_label_map,
+            baseline_accuracies=baseline_by_horizon
+        )
+
+        print("\n✓ Feature-based prediction completed")
+
+    except Exception as e:
+        print(f"  ⚠ Error in feature-based prediction: {e}")
+        import traceback
+        traceback.print_exc()
+
     # Summary
     print("\n" + "="*60)
     print("REGIME QUALITY SUMMARY")
@@ -460,6 +676,11 @@ def run_regime_pipeline(
             'comparison_stats': comparison_stats if 'comparison_stats' in locals() else None,
             'stability_results': stability_results if 'stability_results' in locals() else None,
             'validation_metrics': validation_metrics if 'validation_metrics' in locals() else None
+        },
+        'prediction_results': {
+            'baseline_accuracy': accuracy_results if 'accuracy_results' in locals() else None,
+            'hmm_model': hmm_model if 'hmm_model' in locals() else None,
+            'hmm_accuracy': hmm_accuracy if 'hmm_accuracy' in locals() else None
         },
         'k_used': final_k
     }

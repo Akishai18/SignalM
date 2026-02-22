@@ -14,9 +14,7 @@ def build_regime_features(
     
     #Load PCA-like metrics (market structure, from rolling_pca_metrics.csv) 
     pca_metrics = pd.read_csv(rolling_metrics_path, index_col=0, parse_dates=True)
-    # Expected columns (or rename in code):
-    # 'PC1_var', 'cumulative_var_3', 'effective_dimension', (date as index or column)
-    
+
     # Core Feature Construction 
     if rolling_stats:
         # Use supplied rolling stats dict
@@ -96,7 +94,7 @@ def build_regime_features(
         X['cum_var_3'] = pca_metrics[cumvar_col]
     if effdim_col and effdim_col in pca_metrics.columns:
         X['effective_dimension'] = pca_metrics[effdim_col]
-    # Optionally: can add time-based filtering for joint completeness
+
     X.dropna(how='any', inplace=True)
     return X
 

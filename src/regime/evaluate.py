@@ -4,7 +4,7 @@ import numpy as np
 
 def compute_regime_persistence(labels: pd.Series) -> pd.Series:
     
-    #iven a series of regime labels (indexed by date),
+    #Given a series of regime labels (indexed by date),
     #return a Series of persistence lengths (number of consecutive days in each regime) for each regime id.
     
     if isinstance(labels, np.ndarray):
@@ -230,13 +230,6 @@ def print_semantic_regime_labels(monotonicity_dict):
         
         print(f"  → Suggested Label: {suggested}")
     
-    print("\n" + "-"*70)
-    print("⚠️  Labels come after statistics, not before.")
-    print("   Review characteristics above and assign semantic labels based on:")
-    print("   - Economic interpretation")
-    print("   - Historical context")
-    print("   - Your research question")
-    print("="*70)
     
     return means
 
