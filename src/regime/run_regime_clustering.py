@@ -59,6 +59,14 @@ from regime.hmm_predict import (
     print_hmm_prediction,
     print_hmm_model_summary
 )
+from regime.feature_predict import (
+    build_prediction_dataset,
+    build_current_feature_vector,
+    train_all_predictors,
+    predict_future_regimes,
+    compute_baseline_accuracy_by_horizon,
+    print_feature_prediction_results
+)
 
 # Try to import from main analysis if available
 try:
@@ -541,6 +549,99 @@ def run_regime_pipeline(
         import traceback
         traceback.print_exc()
     
+    # Step 13: Feature-Based Prediction (Random Forest + XGBoost)
+    print("\n" + "="*60)
+    print("STEP 13: FEATURE-BASED PREDICTION (RF + XGBoost)")
+    print("="*60)
+
+    feature_prediction_results = None
+    future_preds = None
+
+    try:
+        print("\n[13.1] Building prediction dataset...")
+        print("  Features: current + lagged (1d/5d/21d) + rate-of-change (NO current regime)")
+        print("  → Forcing models to predict purely from market features")
+
+        prediction_data = build_prediction_dataset(
+            feature_matrix=X_norm,
+            regime_labels=regime_labels,
+            horizons=[1, 7, 30],
+            lags=[1, 5, 21],
+            include_current_regime=False
+        )
+
+        for h, d in prediction_data['datasets'].items():
+            print(f"  {h}d horizon: {len(d['X'])} samples, {len(d['X'].columns)} features")
+
+        print("\n[13.2] Training Random Forest and XGBoost (70/30 chronological split)...")
+        feature_prediction_results = train_all_predictors(
+            prediction_data=prediction_data,
+            train_ratio=0.7
+        )
+
+        print("\n[13.3] Computing Markov baseline accuracy by horizon (test period)...")
+        baseline_by_horizon = compute_baseline_accuracy_by_horizon(
+            regime_labels=regime_labels,
+            transition_matrix=transition_stats['transition_matrix'],
+            horizons=[1, 7, 30],
+            train_ratio=0.7
+        )
+        for h, acc in baseline_by_horizon.items():
+            print(f"  Baseline {h}d: {acc:.2%}")
+
+        print("\n[13.4] Predicting from current date...")
+        current_feature_vec = build_current_feature_vector(
+            feature_matrix=X_norm,
+            regime_labels=regime_labels
+        )
+        current_regime_val = int(regime_labels.iloc[-1])
+
+        # Align feature vector columns to each horizon's training columns
+        aligned_predictions = {}
+        for horizon, hdata in feature_prediction_results.items():
+            dataset_X = prediction_data['datasets'][horizon]['X']
+            train_cols = dataset_X.columns.tolist()
+            current_aligned = current_feature_vec.reindex(columns=train_cols, fill_value=0.0)
+
+            preds_h = {}
+            for model_key, model_data in hdata['models'].items():
+                model = model_data['model']
+                try:
+                    y_pred = int(model.predict(current_aligned)[0])
+                    try:
+                        proba = model.predict_proba(current_aligned)[0]
+                        classes = model.classes_
+                        prob_dict = {int(c): float(p) for c, p in zip(classes, proba)}
+                        confidence = float(proba.max())
+                    except Exception:
+                        prob_dict = {y_pred: 1.0}
+                        confidence = 1.0
+                    preds_h[model_key] = {
+                        'predicted_regime': y_pred,
+                        'confidence': confidence,
+                        'probabilities': prob_dict
+                    }
+                except Exception as e:
+                    preds_h[model_key] = {'error': str(e)}
+            aligned_predictions[horizon] = preds_h
+
+        future_preds = aligned_predictions
+
+        print("\n[13.5] Feature-Based Prediction Results...")
+        print_feature_prediction_results(
+            trained_results=feature_prediction_results,
+            future_predictions=future_preds,
+            regime_label_map=regime_label_map,
+            baseline_accuracies=baseline_by_horizon
+        )
+
+        print("\n✓ Feature-based prediction completed")
+
+    except Exception as e:
+        print(f"  ⚠ Error in feature-based prediction: {e}")
+        import traceback
+        traceback.print_exc()
+
     # Summary
     print("\n" + "="*60)
     print("REGIME QUALITY SUMMARY")
