@@ -1,17 +1,7 @@
 import { cn } from "@/lib/utils";
-
-// Sample correlation data for visualization
-const sectors = ["Tech", "Fin", "Health", "Energy", "Cons", "Ind", "Util", "Mat"];
-const correlationData = [
-  [1.0, 0.72, 0.45, 0.23, 0.67, 0.54, 0.12, 0.34],
-  [0.72, 1.0, 0.38, 0.41, 0.52, 0.61, 0.28, 0.45],
-  [0.45, 0.38, 1.0, 0.15, 0.42, 0.33, 0.52, 0.27],
-  [0.23, 0.41, 0.15, 1.0, 0.28, 0.47, 0.63, 0.71],
-  [0.67, 0.52, 0.42, 0.28, 1.0, 0.58, 0.21, 0.36],
-  [0.54, 0.61, 0.33, 0.47, 0.58, 1.0, 0.39, 0.52],
-  [0.12, 0.28, 0.52, 0.63, 0.21, 0.39, 1.0, 0.44],
-  [0.34, 0.45, 0.27, 0.71, 0.36, 0.52, 0.44, 1.0],
-];
+import { useCorrelationMatrix } from "@/hooks/useRegimeData";
+import { FlipCard } from "@/components/ui/flip-card";
+import { EducationCard } from "./EducationCard";
 
 function getCorrelationColor(value: number, isDark: boolean = false): string {
   if (value >= 0.7) return isDark ? "bg-neon-cyan/80" : "bg-neon-cyan/70";
@@ -21,25 +11,43 @@ function getCorrelationColor(value: number, isDark: boolean = false): string {
 }
 
 export function CorrelationHeatmap() {
-  return (
-    <div className="rounded-xl border border-border bg-card p-5">
-      <div className="mb-4 flex items-center justify-between">
+  const { data, isLoading } = useCorrelationMatrix();
+
+  const sectors = data?.sectors || ["Tech", "Fin", "Health", "Energy", "Cons", "Ind"];
+  const correlationData = data?.matrix || [];
+
+  if (isLoading) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-5">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+            <p className="text-sm text-muted-foreground">Loading correlation data...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const frontContent = (
+    <div className="rounded-xl border border-border bg-card p-5 hover-border-glow group">
+      <div className="mb-4 flex flex-col gap-3">
         <div>
-          <h3 className="text-lg font-semibold">Sector Correlations</h3>
+          <h3 className="text-lg font-semibold group-hover:text-primary transition-colors">Sector Correlations</h3>
           <p className="text-sm text-muted-foreground">Rolling 30-day correlation matrix</p>
         </div>
-        <div className="flex items-center gap-4 text-xs">
-          <div className="flex items-center gap-1.5">
-            <div className="h-3 w-3 rounded bg-neon-cyan/70" />
-            <span className="text-muted-foreground">High (≥0.7)</span>
+        <div className="flex items-center gap-4 text-xs flex-wrap">
+          <div className="flex items-center gap-1.5 cursor-pointer hover:scale-105 transition-transform">
+            <div className="h-3 w-3 rounded bg-neon-cyan/70 group-hover:shadow-md transition-shadow" />
+            <span className="text-muted-foreground hover:text-foreground transition-colors">High (≥0.7)</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <div className="h-3 w-3 rounded bg-neon-green/50" />
-            <span className="text-muted-foreground">Medium</span>
+          <div className="flex items-center gap-1.5 cursor-pointer hover:scale-105 transition-transform">
+            <div className="h-3 w-3 rounded bg-neon-green/50 group-hover:shadow-md transition-shadow" />
+            <span className="text-muted-foreground hover:text-foreground transition-colors">Medium</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <div className="h-3 w-3 rounded bg-muted/30" />
-            <span className="text-muted-foreground">Low</span>
+          <div className="flex items-center gap-1.5 cursor-pointer hover:scale-105 transition-transform">
+            <div className="h-3 w-3 rounded bg-muted/30 group-hover:shadow-md transition-shadow" />
+            <span className="text-muted-foreground hover:text-foreground transition-colors">Low</span>
           </div>
         </div>
       </div>
@@ -48,11 +56,12 @@ export function CorrelationHeatmap() {
         <div className="inline-block min-w-full">
           {/* Header row */}
           <div className="flex">
-            <div className="w-14 shrink-0" />
+            <div className="w-16 shrink-0" />
             {sectors.map((sector) => (
               <div
                 key={sector}
-                className="w-14 shrink-0 text-center text-xs font-medium text-muted-foreground py-2"
+                className="w-16 shrink-0 text-center text-[10px] font-medium text-muted-foreground hover:text-primary py-2 transition-colors cursor-pointer leading-tight"
+                title={sector}
               >
                 {sector}
               </div>
@@ -62,14 +71,14 @@ export function CorrelationHeatmap() {
           {/* Matrix rows */}
           {correlationData.map((row, i) => (
             <div key={sectors[i]} className="flex">
-              <div className="w-14 shrink-0 text-xs font-medium text-muted-foreground flex items-center">
+              <div className="w-16 shrink-0 text-[10px] font-medium text-muted-foreground hover:text-primary flex items-center transition-colors cursor-pointer leading-tight" title={sectors[i]}>
                 {sectors[i]}
               </div>
               {row.map((value, j) => (
                 <div
                   key={`${i}-${j}`}
                   className={cn(
-                    "w-14 h-12 shrink-0 flex items-center justify-center",
+                    "w-16 h-12 shrink-0 flex items-center justify-center",
                     "text-xs font-mono font-medium transition-all duration-200",
                     "rounded-md m-0.5 cursor-pointer",
                     "hover:scale-105 hover:z-10 hover:shadow-lg",
@@ -86,4 +95,22 @@ export function CorrelationHeatmap() {
       </div>
     </div>
   );
+
+  const backContent = (
+    <EducationCard
+      title="Sector Correlation Matrix"
+      whatItIs="This heatmap shows how strongly different market sectors move together over the last 30 days. Correlation ranges from -1 (perfect opposite movement) to +1 (perfect together movement). Higher values (brighter cyan) mean sectors are moving in lockstep."
+      whyItMatters="Sector correlations reveal market structure. Low correlations (0.3-0.5) indicate healthy, diversified markets where sectors respond to their own fundamentals. High correlations (>0.7) signal risk-off behavior where macro factors dominate and diversification breaks down."
+      howToRead={`• Diagonal cells (highlighted): Always 1.0 - each sector perfectly correlates with itself
+• Cyan cells (≥0.7): High correlation - sectors moving together
+• Green cells (0.5-0.7): Medium correlation - some co-movement
+• Gray cells (<0.5): Low correlation - independent movements
+
+During calm regimes, you'll see more gray/green. During crises, the entire matrix lights up cyan as correlations spike toward 1.`}
+      actionableInsight="When correlations suddenly increase across the board, it's often a warning sign that markets are entering a stressed regime. This is when 'flight to quality' happens and sector-specific strategies underperform broad market hedges."
+      variant="success"
+    />
+  );
+
+  return <FlipCard front={frontContent} back={backContent} />;
 }

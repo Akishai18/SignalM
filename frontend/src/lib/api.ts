@@ -1,0 +1,494 @@
+/**
+ * API Client for Market Regime Dashboard
+ * Connects to FastAPI backend (localhost:8000)
+ */
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+// ============================================================================
+// TypeScript Types (matching backend Pydantic models)
+// ============================================================================
+
+export interface RegimeLabel {
+  id: number;
+  name: string;
+  description: string;
+  color: string;
+}
+
+export interface CurrentRegime {
+  regime_id: number;
+  regime_name: string;
+  confidence: number;
+  days_in_regime: number;
+  date: string;
+}
+
+export interface RegimeHistoryPoint {
+  date: string;
+  regime: number;
+  regime_name: string;
+}
+
+export interface PredictionModel {
+  model_name: string;
+  accuracy: number;
+  confidence: number;
+  predicted_regime: number;
+  predicted_regime_name: string;
+  probabilities: Record<number, number>;
+}
+
+export interface ForecastHorizon {
+  horizon_days: number;
+  predicted_regime: number;
+  predicted_regime_name: string;
+  confidence: number;
+  probabilities: Record<number, number>;
+}
+
+export interface Forecast {
+  current_regime: CurrentRegime;
+  horizons: ForecastHorizon[];
+}
+
+export interface ModelComparison {
+  models: Array<{
+    model_name: string;
+    accuracy: number;
+    confidence: number;
+    correct_predictions: number;
+    total_predictions: number;
+  }>;
+  best_model: string;
+  insights: string[];
+}
+
+export interface DashboardMetrics {
+  avg_correlation: number;
+  vol_dispersion: number;
+  effective_dimension: number;
+  current_regime: string;
+  regime_confidence: number;
+  days_in_regime: number;
+}
+
+export interface FeatureImportance {
+  feature: string;
+  importance: number;
+  rank: number;
+}
+
+export interface CorrelationMatrix {
+  sectors: string[];
+  matrix: number[][];
+  timestamp: string;
+}
+
+export interface HealthCheck {
+  status: string;
+  data_loaded: boolean;
+  regime_labels_count: number;
+  features_count: number;
+  date_range: {
+    start: string;
+    end: string;
+  };
+  timestamp: string;
+}
+
+export interface SPYDataPoint {
+  date: string;
+  close: number;
+  returns?: number;
+  vol_252d?: number;
+  regime?: number;
+}
+
+export interface SPYHistoryResponse {
+  data: SPYDataPoint[];
+  count: number;
+  timestamp: string;
+}
+
+export interface SPYCurrent {
+  date: string;
+  close: number;
+  returns?: number;
+  vol_252d?: number;
+  timestamp: string;
+}
+
+export interface VIXDataPoint {
+  date: string;
+  close: number;
+  regime?: number;
+}
+
+export interface VIXHistoryResponse {
+  data: VIXDataPoint[];
+  count: number;
+  timestamp: string;
+}
+
+export interface VIXCurrent {
+  date: string;
+  close: number;
+  timestamp: string;
+}
+
+export interface RegimePerformance {
+  regime_id: number;
+  regime_name: string;
+  days: number;
+  avg_daily_return: number;
+  annualized_return: number;
+  volatility: number;
+  sharpe_ratio: number;
+  max_daily_gain: number;
+  max_daily_loss: number;
+  win_rate: number;
+  avg_vix?: number;
+}
+
+export interface MergedMarketDataPoint {
+  date: string;
+  regime?: number;
+  spy_close?: number;
+  spy_returns?: number;
+  spy_vol_252d?: number;
+  vix?: number;
+}
+
+export interface MergedMarketDataResponse {
+  data: MergedMarketDataPoint[];
+  count: number;
+  timestamp: string;
+}
+
+export interface IndexInfo {
+  symbol: string;
+  name: string;
+  description: string;
+  category: string;
+  color: string;
+}
+
+export interface IndexRegime {
+  symbol: string;
+  name: string;
+  regime_id: number;
+  regime_name: string;
+  date: string;
+  price?: number;
+  volatility?: number;
+}
+
+export interface IndexComparison {
+  indices: IndexRegime[];
+  timestamp: string;
+}
+
+export interface IndexHistoryPoint {
+  date: string;
+  regime: number | null;
+  regime_name: string | null;
+  price: number | null;
+}
+
+export interface IndexHistoryResponse {
+  symbol: string;
+  name: string;
+  data: IndexHistoryPoint[];
+  count: number;
+  timestamp: string;
+}
+
+// ============================================================================
+// API Error Handling
+// ============================================================================
+
+export class APIError extends Error {
+  constructor(
+    message: string,
+    public status?: number,
+    public details?: any
+  ) {
+    super(message);
+    this.name = 'APIError';
+  }
+}
+
+async function handleResponse<T>(response: Response): Promise<T> {
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorMessage = `API error: ${response.status} ${response.statusText}`;
+
+    try {
+      const errorJson = JSON.parse(errorText);
+      errorMessage = errorJson.detail || errorMessage;
+    } catch {
+      // If not JSON, use status text
+    }
+
+    throw new APIError(errorMessage, response.status, errorText);
+  }
+
+  return response.json();
+}
+
+// ============================================================================
+// API Client Functions
+// ============================================================================
+
+export const api = {
+  /**
+   * Health check
+   */
+  async ping(): Promise<{ status: string; service: string; version: string }> {
+    const response = await fetch(`${API_BASE_URL}/`);
+    return handleResponse(response);
+  },
+
+  /**
+   * Get all regime labels with metadata
+   */
+  async getRegimeLabels(): Promise<RegimeLabel[]> {
+    const response = await fetch(`${API_BASE_URL}/api/regimes/labels`);
+    return handleResponse(response);
+  },
+
+  /**
+   * Get current regime state
+   */
+  async getCurrentRegime(): Promise<CurrentRegime> {
+    const response = await fetch(`${API_BASE_URL}/api/regimes/current`);
+    return handleResponse(response);
+  },
+
+  /**
+   * Get historical regime labels
+   * @param limit - Number of recent points to return (default: 1000)
+   */
+  async getRegimeHistory(limit: number = 1000): Promise<RegimeHistoryPoint[]> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/regimes/history?limit=${limit}`
+    );
+    return handleResponse(response);
+  },
+
+  /**
+   * Get regime predictions for 1/7/30-day horizons
+   */
+  async getForecast(): Promise<Forecast> {
+    const response = await fetch(`${API_BASE_URL}/api/predictions/forecast`);
+    return handleResponse(response);
+  },
+
+  /**
+   * Get accuracy comparison of all 4 prediction models
+   */
+  async getModelComparison(): Promise<ModelComparison> {
+    const response = await fetch(`${API_BASE_URL}/api/predictions/comparison`);
+    return handleResponse(response);
+  },
+
+  /**
+   * Get summary metrics for dashboard
+   */
+  async getMetricsSummary(): Promise<DashboardMetrics> {
+    const response = await fetch(`${API_BASE_URL}/api/metrics/summary`);
+    return handleResponse(response);
+  },
+
+  /**
+   * Get feature importance for a given model
+   * @param model - Model name ('random_forest' or 'xgboost')
+   * @param topN - Number of top features to return (default: 10)
+   */
+  async getFeatureImportance(
+    model: 'random_forest' | 'xgboost' = 'random_forest',
+    topN: number = 10
+  ): Promise<FeatureImportance[]> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/features/importance?model=${model}&top_n=${topN}`
+    );
+    return handleResponse(response);
+  },
+
+  /**
+   * Get correlation matrix for sector/factor analysis
+   */
+  async getCorrelationMatrix(): Promise<CorrelationMatrix> {
+    const response = await fetch(`${API_BASE_URL}/api/correlations/matrix`);
+    return handleResponse(response);
+  },
+
+  /**
+   * Detailed health check with data status
+   */
+  async getHealthCheck(): Promise<HealthCheck> {
+    const response = await fetch(`${API_BASE_URL}/api/health`);
+    return handleResponse(response);
+  },
+
+  // ========== Market Data Endpoints ==========
+
+  /**
+   * Get current SPY price and metrics
+   */
+  async getSPYCurrent(): Promise<SPYCurrent> {
+    const response = await fetch(`${API_BASE_URL}/api/market/spy/current`);
+    return handleResponse(response);
+  },
+
+  /**
+   * Get SPY historical data
+   * @param limit - Number of days to fetch (default: 365)
+   */
+  async getSPYHistory(limit: number = 365): Promise<SPYHistoryResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/market/spy/history?limit=${limit}`);
+    return handleResponse(response);
+  },
+
+  /**
+   * Get current VIX level
+   */
+  async getVIXCurrent(): Promise<VIXCurrent> {
+    const response = await fetch(`${API_BASE_URL}/api/market/vix/current`);
+    return handleResponse(response);
+  },
+
+  /**
+   * Get VIX historical data
+   * @param limit - Number of days to fetch (default: 365)
+   */
+  async getVIXHistory(limit: number = 365): Promise<VIXHistoryResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/market/vix/history?limit=${limit}`);
+    return handleResponse(response);
+  },
+
+  /**
+   * Get SPY performance metrics by regime
+   */
+  async getRegimePerformance(): Promise<RegimePerformance[]> {
+    const response = await fetch(`${API_BASE_URL}/api/regimes/performance`);
+    return handleResponse(response);
+  },
+
+  /**
+   * Get merged regime + SPY + VIX data
+   * @param limit - Number of days to fetch (default: 365)
+   */
+  async getMergedMarketData(limit: number = 365): Promise<MergedMarketDataResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/market/merged?limit=${limit}`);
+    return handleResponse(response);
+  },
+
+  // ========== Multi-Index Endpoints ==========
+
+  /**
+   * Get list of all available indices
+   */
+  async getIndicesList(): Promise<IndexInfo[]> {
+    const response = await fetch(`${API_BASE_URL}/api/indices/list`);
+    return handleResponse(response);
+  },
+
+  /**
+   * Get current regime for a specific index
+   * @param symbol - Index symbol (e.g., 'SPY', 'QQQ')
+   */
+  async getIndexCurrentRegime(symbol: string): Promise<IndexRegime> {
+    const response = await fetch(`${API_BASE_URL}/api/indices/${symbol}/current`);
+    return handleResponse(response);
+  },
+
+  /**
+   * Get historical regimes for a specific index
+   * @param symbol - Index symbol
+   * @param limit - Number of days to fetch (default: 365)
+   */
+  async getIndexHistory(symbol: string, limit: number = 365): Promise<IndexHistoryResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/indices/${symbol}/history?limit=${limit}`);
+    return handleResponse(response);
+  },
+
+  /**
+   * Get current regimes for all indices (comparison view)
+   */
+  async getIndicesComparison(): Promise<IndexComparison> {
+    const response = await fetch(`${API_BASE_URL}/api/indices/comparison`);
+    return handleResponse(response);
+  },
+
+  /**
+   * Get performance metrics by regime for a specific index
+   * @param symbol - Index symbol (e.g., 'SPY', 'QQQ')
+   */
+  async getIndexPerformance(symbol: string): Promise<RegimePerformance[]> {
+    const response = await fetch(`${API_BASE_URL}/api/indices/${symbol}/performance`);
+    return handleResponse(response);
+  },
+
+  /**
+   * Get merged regime + price + VIX data for a specific index
+   * @param symbol - Index symbol
+   * @param limit - Number of days to fetch (default: 365)
+   */
+  async getIndexMergedData(symbol: string, limit: number = 365): Promise<MergedMarketDataResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/indices/${symbol}/merged?limit=${limit}`);
+    return handleResponse(response);
+  },
+};
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Format date for display
+ */
+export function formatDate(dateString: string): string {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+/**
+ * Format percentage for display
+ */
+export function formatPercent(value: number, decimals: number = 1): string {
+  return `${(value * 100).toFixed(decimals)}%`;
+}
+
+/**
+ * Get regime color by ID
+ */
+export function getRegimeColor(regimeId: number): string {
+  const colors: Record<number, string> = {
+    0: '#10b981', // green (Calm)
+    1: '#ef4444', // red (Crisis)
+    2: '#f59e0b', // orange (Elevated Stress)
+    3: '#8b5cf6', // purple (Transition)
+  };
+  return colors[regimeId] || '#6b7280'; // gray fallback
+}
+
+/**
+ * Get regime name by ID
+ */
+export function getRegimeName(regimeId: number): string {
+  const names: Record<number, string> = {
+    0: 'Calm',
+    1: 'Crisis',
+    2: 'Elevated Stress',
+    3: 'Transition',
+  };
+  return names[regimeId] || 'Unknown';
+}
+
+export default api;

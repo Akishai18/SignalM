@@ -1,361 +1,506 @@
-# Market Regime & Risk Factor Analyzer
+# Market Regime Detection & Prediction System
 
 ![Python](https://img.shields.io/badge/Python-3.9%2B-blue)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0%2B-blue)
+![React](https://img.shields.io/badge/React-18.3-61dafb)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688)
 ![License](https://img.shields.io/badge/License-MIT-green)
-![Status](https://img.shields.io/badge/Status-Active%20Development-orange)
+![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)
 
 ## 📖 Overview
-The **Market Regime & Risk Factor Analyzer** is a quantitative research engine designed to deconstruct U.S. equity market behavior. By processing raw S&P 500 constituent data, the system identifies **latent market regimes** (low volatility/bull, high volatility/bear, transition) and quantifies shifting risk factors.
 
-This tool bridges the gap between **raw financial data** and **actionable risk insights**, utilizing linear algebra and statistical modeling to track how correlation structures, volatility patterns, and factor dominance evolve over time.
+**Market Regime** is a full-stack quantitative finance application that identifies distinct market states (Calm, Crisis, Elevated Stress, Transition) from historical equity data and predicts future regime transitions using machine learning. Built with Python, TypeScript, and modern ML frameworks, this system provides real-time regime analysis through an interactive web dashboard backed by a production-ready REST API.
+
+The platform analyzes 500+ S&P 500 constituents (2012-2024) to extract market structure features—realized volatility, cross-sectional correlation, PCA-based dimensionality—and uses unsupervised learning (K-means) to categorize regimes. Four prediction models (Markov chains, Hidden Markov Models, Random Forest, XGBoost) forecast regime transitions at 1-day, 7-day, and 30-day horizons with comprehensive accuracy validation.
+
+**Live Demo:** *(Deployment in progress)*
+**API Docs:** http://localhost:8000/docs (when running locally)
 
 ---
 
-## 🎯 Core Objectives
+## 🎯 Key Features
 
-1. **Data Transformation & Alignment**  
-   Convert raw price data into a clean synchronized return matrix suitable for quantitative analysis
+### **End-to-End ML Pipeline**
+- ✅ Automated data processing for 500+ equities (2012-2024)
+- ✅ Feature engineering: volatility, correlation, PCA metrics
+- ✅ Unsupervised regime detection (K-means, K=4)
+- ✅ 4 prediction models with honest accuracy evaluation
+- ✅ Chronological train/test validation (no data leakage)
 
-2. **Risk Quantification**  
-   Measure market risk through rolling volatility, cross-sectional dispersion, and correlation dynamics
+### **Production-Ready Backend**
+- ✅ FastAPI REST API (10 endpoints)
+- ✅ Real-time regime state & predictions
+- ✅ Model comparison metrics
+- ✅ CORS-enabled for frontend integration
+- ✅ Comprehensive error handling
 
-3. **Factor Analysis**  
-   Extract dominant risk factors using PCA and track their explanatory power over time
+### **Interactive Frontend Dashboard**
+- ✅ React + TypeScript with shadcn/ui components
+- ✅ Live regime visualization & metrics
+- ✅ Model performance comparison table
+- ✅ Multi-horizon forecast display
+- ✅ Auto-refreshing data (30-60s intervals)
 
-4. **Regime Identification**  
-   Detect structural changes in market behavior via statistical and linear-algebraic signals
-
-5. **Extensible Architecture**  
-   Build a modular backend suitable for interactive visualization and user-facing analytical tools
+### **Rigorous Evaluation**
+- ✅ 99.54% accuracy (Markov baseline)
+- ✅ 91.06% accuracy (Random Forest, feature-only)
+- ✅ Comprehensive FINDINGS.md analysis
+- ✅ 10 prediction visualizations (confusion matrices, timelines)
 
 ---
 
 ## 🛠 Tech Stack
 
-* **Core:** Python 3.9+, NumPy, Pandas
-* **Statistical Analysis:** SciPy, Scikit-Learn (PCA, Decomposition)
-* **Visualization:** Matplotlib, Seaborn
-* **Data Processing:** Vectorized operations for high-performance matrix manipulation
-* **Future:** React/Next.js frontend for interactive dashboards
+### **Backend (Python)**
+- **Core:** Python 3.9+, NumPy, Pandas
+- **ML:** scikit-learn, XGBoost, hmmlearn
+- **API:** FastAPI, Uvicorn, Pydantic
+- **Analysis:** SciPy, UMAP, Matplotlib, Seaborn
+
+### **Frontend (TypeScript)**
+- **Framework:** React 18, TypeScript 5.0, Vite
+- **UI:** shadcn/ui, Radix UI, Tailwind CSS
+- **Data:** TanStack Query (React Query)
+- **Charts:** Recharts
+- **Routing:** React Router v6
+
+### **Infrastructure**
+- **API Server:** FastAPI + Uvicorn
+- **Dev Server:** Vite (HMR)
+- **Data Storage:** CSV files (regime_results/)
+- **Future:** PostgreSQL, AWS deployment
 
 ---
 
-## 📊 Data Structure
+## 🚀 Quick Start
 
-The project uses historical S&P 500 data consisting of:
-
-- **Individual stock prices** (Adjusted Close, OHLC, volume)
-- **Index-level S&P 500 prices** for benchmark comparison
-- **Company metadata** (sector, industry, market cap classifications)
-
-### Data Transformation Pipeline
-
-Raw data is reshaped into structured matrices:
-
-#### Price Matrix
-```
-P(t,i) ∈ ℝ^(T × N)
+### **Prerequisites**
+```bash
+# Python 3.9+ and Node.js 18+ required
+python --version  # Should be 3.9+
+node --version    # Should be 18+
 ```
 
-Where:
-- **T** = number of time periods (trading days)
-- **N** = number of assets (stocks)
-- **P(t,i)** = price of asset *i* at time *t*
-
-#### Log Return Matrix
-```
-R(t,i) = ln(P(t,i)) - ln(P(t-1,i))
+### **1. Clone Repository**
+```bash
+git clone https://github.com/yourusername/market-regime.git
+cd market-regime
 ```
 
-Where:
-- **R(t,i)** = log return of asset *i* from time *t-1* to *t*
-- **ln** = natural logarithm
+### **2. Backend Setup**
+```bash
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 
-**Why Log Returns?**
+# Install dependencies
+pip install -r requirements.txt
 
-This transformation ensures:
-- **Stationarity:** Returns are more stationary than prices for time-series analysis
-- **Time-additivity:** Multi-period returns can be summed: R(t₁→t₃) = R(t₁→t₂) + R(t₂→t₃)
-- **Scale normalization:** Comparable across assets with different price levels
-- **Symmetry:** A 10% gain followed by 10% loss returns approximately to origin
+# Run regime detection (first time only, ~2-3 minutes)
+PYTHONPATH=src python src/regime/run_regime_clustering.py
+
+# Start API server
+uvicorn api.main:app --reload --port 8000
+```
+
+**Verify:** http://localhost:8000/api/health should return `{"status":"healthy"}`
+
+### **3. Frontend Setup**
+```bash
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start dev server
+npm run dev
+```
+
+**Access:** http://localhost:5173 (or http://localhost:8080)
 
 ---
 
-## 🚀 Current Pipeline
+## 📊 System Architecture
 
-### 1. **Data Ingestion & Validation**
-- Load raw CSV files (stocks, companies, index data)
-- Validate data integrity and format consistency
-- Report loading statistics and data dimensions
-
-### 2. **Data Cleaning & Structuring**
-- Remove malformed and missing observations
-- Handle edge cases (zero prices, gaps, outliers)
-- Pivot stock prices into time × asset matrix
-- Align timestamps across all assets
-
-### 3. **Return Space Transformation**
-- Compute log returns for all assets
-- Generate first-order return statistics
-- Identify and report dropped observations
-
-### 4. **Exploratory Diagnostics**
-- **Distribution Analysis:** Mean returns, volatility, skewness, kurtosis
-- **Missing Data Patterns:** Visualize data completeness across time and assets
-- **Summary Statistics:** Generate comprehensive descriptive metrics
-
-### 5. **Rolling Risk Analytics**
-Compute time-varying metrics over multiple horizons:
-- **Volatility** (annualized standard deviation)
-- **Correlation matrices** (asset co-movement)
-- **Cross-sectional statistics** (market-wide dispersion)
-
-### 6. **Visualization Suite**
-- Distribution plots (histograms, Q-Q plots)
-- Volatility clustering detection
-- Correlation spike analysis
-- Rolling statistics dashboards
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    CSV Data (2012-2024)                     │
+│                 500+ S&P 500 Constituents                   │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Feature Engineering Pipeline                    │
+│  - Rolling volatility (252d)                                │
+│  - Cross-sectional correlation                              │
+│  - PCA eigenvalues & variance explained                     │
+│  - Effective dimension (eigenvalue concentration)           │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│           Unsupervised Regime Detection (K=4)               │
+│  - K-means clustering on normalized features                │
+│  - Regimes: Calm, Crisis, Elevated Stress, Transition       │
+│  - Validation: persistence, UMAP, economic monotonicity     │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Prediction Models (4 methods)                   │
+│  1. Markov Chain Baseline (99.54% accuracy)                 │
+│  2. Hidden Markov Model (86.33% feature-inferred)           │
+│  3. Random Forest (91.06% feature-only)                     │
+│  4. XGBoost (81.81% feature-only)                           │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  FastAPI Backend (10 endpoints)              │
+│  /api/regimes/current    - Current regime state             │
+│  /api/regimes/history    - Historical timeline              │
+│  /api/predictions/forecast - 1/7/30-day predictions         │
+│  /api/predictions/comparison - Model rankings               │
+│  /api/metrics/summary    - Dashboard metrics                │
+│  /api/features/importance - Feature rankings                │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│            React Dashboard (localhost:5173)                  │
+│  - Live regime state & confidence                           │
+│  - Model comparison table                                   │
+│  - Multi-horizon forecasts                                  │
+│  - Feature importance charts                                │
+│  - Correlation heatmaps                                     │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## ⏱️ Rolling Time Windows
+## 🧮 Regime Detection Methodology
 
-Rolling statistics are computed over standard market horizons:
+### **Feature Space (6 dimensions)**
 
-| Window | Trading Days | Period | Use Case |
-|--------|--------------|--------|----------|
-| **21 days** | ~1 month | Short-term | Tactical risk management |
-| **63 days** | ~1 quarter | Medium-term | Earnings cycle analysis |
-| **252 days** | ~1 year | Long-term | Strategic positioning |
+| Feature | Description | Formula |
+|---------|-------------|---------|
+| **avg_vol_252** | Realized volatility (annualized) | σ = √(252 × Var(R)) |
+| **vol_dispersion** | Cross-sectional volatility spread | std(σ₁, σ₂, ..., σₙ) |
+| **avg_correlation** | Mean pairwise correlation | avg(ρᵢⱼ) for i≠j |
+| **pc1_var** | PC1 variance explained | λ₁ / Σλᵢ |
+| **cum_var_3** | Cumulative variance (PC1-3) | (λ₁+λ₂+λ₃) / Σλᵢ |
+| **effective_dimension** | Eigenvalue concentration | exp(-Σ pᵢlog(pᵢ)) |
 
-These windows enable analysis of:
-- **Volatility clustering:** Periods of high/low market turbulence
-- **Correlation structure:** Evolution of asset relationships
-- **Factor stability:** Persistence of dominant risk drivers
+Where:
+- **R** = daily log returns
+- **σᵢ** = volatility of asset i
+- **ρᵢⱼ** = correlation between assets i and j
+- **λᵢ** = i-th eigenvalue from PCA
+- **pᵢ** = normalized eigenvalue (λᵢ / Σλⱼ)
+
+### **Identified Regimes**
+
+| Regime | Label | % of Time | Mean Duration | Characteristics |
+|--------|-------|-----------|---------------|-----------------|
+| **0** | Calm | 61% | 285 days | Low vol (0.24), low corr (0.28), high dim (4.9) |
+| **1** | Crisis | 5% | 156 days | High vol (0.35), high corr (0.45), low dim (3.8) |
+| **2** | Elevated Stress | 17% | 142 days | Medium vol (0.28), medium corr (0.35) |
+| **3** | Transition | 17% | 135 days | Mixed characteristics, regime shifts |
+
+**Key Finding:** Regimes are highly persistent (280+ day mean duration) with only 15 transitions in 3,264 trading days, creating a fundamental prediction challenge.
 
 ---
 
-## 🧮 Quantitative Methodology
+## 🎯 Prediction Model Results
 
-### 1. Covariance & Correlation Analysis
+**Test Period:** 2021-2024 (30% holdout, chronological split)
 
-To understand market structure, we compute the rolling covariance matrix **Σ** over a window **W**:
+### **1-Day Horizon Accuracy**
 
-```
-Σ_W = (1/(W-1)) × Σ(t=1 to W) [(R_t - R̄)(R_t - R̄)ᵀ]
-```
+| Rank | Model | Accuracy | Confidence | Why It Works / Fails |
+|------|-------|----------|------------|---------------------|
+| 🥇 1 | **Markov Chain** | 99.54% | 99.54% | Regimes persist → "predict same" works |
+| 🥈 2 | **Random Forest** | 91.06% | 76.65% | Learns from vol dispersion + PCA |
+| 🥉 3 | **HMM** | 86.33% | 96.86% | Feature inference harder than labels |
+| 4 | **XGBoost** | 81.81% | 88.31% | Overfits on rare regimes (Crisis) |
 
-Where:
-- **Σ_W** = covariance matrix over window W
-- **R_t** = return vector at time t
-- **R̄** = mean return vector
-- **ᵀ** = matrix transpose
+### **Key Insights from FINDINGS.md**
 
-The corresponding correlation matrix provides scale-invariant co-movement metrics.
+✅ **Markov baseline is surprisingly effective** due to high regime persistence (280+ day duration)
+✅ **Feature-based signals exist** but add only modest value beyond "predict same regime"
+✅ **Volatility dispersion** (12.1% importance) and **PCA concentration** (7.8%) are top predictors
+✅ **Lagged features** (5-day, 21-day) outperform 1-day lags for detecting regime transitions
+⚠️ **Rare regimes hard to predict:** Elevated Stress only 77% avg accuracy (only 7 test samples)
 
-### 2. Factor Decomposition via PCA
+### **Multi-Horizon Performance**
 
-We solve the eigenvalue problem for the correlation matrix **C** to identify dominant risk factors:
-
-```
-C × v = λ × v
-```
-
-Where:
-- **C** = correlation matrix
-- **v** = eigenvector (factor loadings)
-- **λ** = eigenvalue (variance explained)
-
-**Interpretation:**
-- High **λ₁** (first eigenvalue) indicates a correlated "risk-on/risk-off" market regime
-- The eigenvector **v₁** defines the loadings of the dominant market factor
-- A diversified portfolio has variance spread across multiple eigenvalues
-
-### 3. Explained Variance Tracking
-
-The proportion of total variance explained by the first **k** components:
-
-```
-Explained Variance Ratio = (Σ(i=1 to k) λᵢ) / (Σ(i=1 to N) λᵢ)
-```
-
-Where:
-- **λᵢ** = eigenvalue of the i-th principal component
-- **k** = number of components considered
-- **N** = total number of assets
-
-A rising PC1 ratio suggests increasing market integration and systemic risk.
-
-### 4. Regime Segmentation (In Progress)
-
-Market states are identified through:
-- **Volatility thresholds:** Persistent high/low volatility periods
-- **Factor dominance:** PC1 explanatory power exceeding historical norms
-- **Correlation breakpoints:** Structural changes in asset relationships
+| Horizon | Markov | HMM | Random Forest | XGBoost |
+|---------|--------|-----|---------------|---------|
+| 1-day   | 99.54% | 86.33% | 91.06% | 81.81% |
+| 7-day   | 95.99% | ~92% | 83.21% | 84.76% |
+| 30-day  | 92.32% | ~89% | 83.30% | 76.87% |
 
 ---
 
 ## 📂 Project Structure
 
 ```bash
-QUANT-PROJECT-1/
-├── data/                      # Raw CSV datasets
-│   ├── sp500_stocks.csv       # Historical price data
-│   ├── sp500_companies.csv    # Company metadata
-│   └── sp500_index.csv        # Index-level data
-├── src/                       # Core application code
-│   ├── analyze.py             # Statistical computations & transformations
-│   ├── display.py             # Console output formatting
-│   ├── visualize.py           # Plotting and chart generation
-│   └── main.py                # Pipeline orchestration
-├── archive/                   # Legacy/backup files
-├── notebooks/                 # Jupyter notebooks for EDA
-├── requirements.txt           # Python dependencies
-└── README.md                  # This file
+market-regime/
+├── api/                           # FastAPI backend
+│   ├── main.py                    # API application (10 endpoints)
+│   ├── routes/                    # Route modules
+│   └── test_api.py                # API testing script
+│
+├── frontend/                      # React dashboard
+│   ├── src/
+│   │   ├── pages/                 # Page components
+│   │   │   ├── Index.tsx          # Dashboard home
+│   │   │   ├── PredictionsPage.tsx # Model comparison
+│   │   │   ├── CorrelationPage.tsx
+│   │   │   ├── VolatilityPage.tsx
+│   │   │   └── FactorsPage.tsx
+│   │   ├── components/
+│   │   │   ├── dashboard/         # Dashboard components
+│   │   │   ├── predictions/       # Prediction components
+│   │   │   └── ui/                # shadcn/ui components
+│   │   ├── hooks/
+│   │   │   └── useRegimeData.ts   # TanStack Query hooks
+│   │   ├── lib/
+│   │   │   └── api.ts             # API client
+│   │   └── App.tsx                # Router config
+│   ├── package.json
+│   └── vite.config.ts
+│
+├── src/                           # Python ML pipeline
+│   ├── regime/
+│   │   ├── run_regime_clustering.py  # Main clustering pipeline
+│   │   ├── feature_engineering.py    # Feature computation
+│   │   ├── evaluate.py               # Clustering evaluation
+│   │   ├── visualize_regimes.py      # Regime visualizations
+│   │   ├── transitions.py            # Transition analysis
+│   │   ├── predict.py                # Markov baseline
+│   │   ├── hmm_predict.py            # HMM predictions
+│   │   ├── feature_predict.py        # RF/XGBoost predictions
+│   │   ├── evaluate_predictions.py   # Model comparison
+│   │   └── compare_predictions.py    # Unified evaluation
+│   ├── analyze.py                 # Statistical computations
+│   ├── display.py                 # Console output
+│   ├── visualize.py               # EDA plots
+│   └── main.py                    # Pipeline orchestration
+│
+├── data/                          # Raw data
+│   ├── sp500_stocks.csv           # Historical prices
+│   ├── sp500_companies.csv        # Company metadata
+│   └── sp500_index.csv            # Index data
+│
+├── regime_results/                # Output artifacts
+│   ├── regime_labels_k4.csv       # Regime assignments
+│   ├── regime_features_normalized.csv
+│   ├── clustering_evaluation.csv
+│   ├── prediction_visualizations/ # 10 model viz PNGs
+│   └── regime_transition_analysis/
+│
+├── pca_data/                      # PCA results
+│   ├── pca_components.csv
+│   └── pca_loadings.csv
+│
+├── requirements.txt               # Python dependencies
+├── FINDINGS.md                    # Comprehensive results analysis
+├── API_README.md                  # API documentation
+├── INTEGRATION_COMPLETE.md        # Frontend integration guide
+├── PHASE_4_COMPLETE.md            # Prediction dashboard docs
+└── README.md                      # This file
 ```
 
 ---
 
-## ⚡ Usage
+## 🔬 Mathematical Foundation
 
-### 1. Clone the Repository
+### **Covariance & Correlation**
+
+Rolling covariance matrix **Σ** over window **W**:
+
+```
+Σ_W = (1/(W-1)) × Σ(t=1 to W) [(R_t - R̄)(R_t - R̄)ᵀ]
+```
+
+Correlation matrix provides scale-invariant co-movement metrics.
+
+### **Principal Component Analysis (PCA)**
+
+Eigenvalue decomposition of correlation matrix **C**:
+
+```
+C × v = λ × v
+```
+
+Where:
+- **v** = eigenvector (factor loadings)
+- **λ** = eigenvalue (variance explained)
+
+**Interpretation:**
+- High **λ₁** → correlated "risk-on/risk-off" market
+- Rising PC1 ratio → increasing systemic risk
+
+### **Effective Dimension (Participation Ratio)**
+
+Eigenvalue concentration metric:
+
+```
+D_eff = exp(-Σ pᵢ log(pᵢ))
+```
+
+Where **pᵢ = λᵢ / Σλⱼ** (normalized eigenvalues)
+
+**Interpretation:**
+- **D_eff = N** → perfect diversification (all eigenvalues equal)
+- **D_eff = 1** → one dominant factor (systemic crisis)
+
+---
+
+## 📈 API Endpoints
+
+### **Regime State**
 ```bash
-git clone https://github.com/yourusername/market-regime-analyzer.git
-cd market-regime-analyzer
+GET /api/regimes/current
+# Returns: Current regime (Calm/Crisis/etc.), confidence, days in regime
+
+GET /api/regimes/history?limit=1000
+# Returns: Historical regime labels with dates
 ```
 
-### 2. Set Up Environment
+### **Predictions**
 ```bash
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+GET /api/predictions/forecast
+# Returns: 1/7/30-day predictions with probabilities
 
-# Install dependencies
-pip install -r requirements.txt
+GET /api/predictions/comparison
+# Returns: All 4 models ranked by accuracy
 ```
 
-### 3. Run the Analysis Pipeline
+### **Analytics**
 ```bash
-# From project root
-python src/main.py
+GET /api/metrics/summary
+# Returns: Correlation, volatility, dimension metrics
 
-# The pipeline will:
-# - Load and clean data
-# - Compute statistics
-# - Generate visualizations
-# - Display results in terminal
+GET /api/features/importance?model=random_forest&top_n=10
+# Returns: Top feature importances
 ```
 
-### 4. Customize Analysis (Optional)
-```python
-# Modify src/main.py to adjust parameters
-results = run_full_analysis(
-    base_path="data",
-    generate_plots=True,      # Set False to skip visualizations
-    save_plots_dir="output"   # Specify directory to save plots
-)
-```
+**Full API Docs:** http://localhost:8000/docs (Swagger UI)
 
 ---
 
-## 🔮 Roadmap & Future Enhancements
+## 🎨 Dashboard Features
 
-### ✅ Completed
-- [x] Automated ETL pipeline with data validation
-- [x] Log-return transformation and cleaning
-- [x] Rolling volatility and correlation metrics
-- [x] Distribution analysis and summary statistics
-- [x] Visualization suite (distributions, rolling metrics)
+### **Main Dashboard** (`/`)
+- Current regime state (Calm, Crisis, etc.)
+- Real-time metrics (correlation, volatility, dimension)
+- Regime confidence gauge
+- Correlation heatmap
+- Top feature importances
 
-### 🚧 In Progress
-- [ ] **PCA Implementation:** Extract principal components and track variance ratios over time
-- [ ] **Factor Analysis:** Compute factor loadings and identify dominant risk drivers
-- [ ] **Regime Detection:** Implement statistical tests for structural breaks
+### **Predictions Page** (`/predictions`)
+- Model comparison table (4 models ranked)
+- Multi-horizon forecast cards (1/7/30 days)
+- Regime probability distributions
+- Key insights from analysis
 
-### 🔮 Planned
-- [ ] **Eigen-Portfolio Construction:** Build portfolios based on principal components
-- [ ] **Hidden Markov Models (HMM):** Automated regime labeling using probabilistic models
-- [ ] **K-Means Clustering:** Unsupervised grouping of market states
-- [ ] **Interactive Web Dashboard:** React/Next.js frontend for real-time exploration
-- [ ] **User-Uploaded Datasets:** Support for custom equity universes
-- [ ] **Backtesting Framework:** Test regime-based trading strategies
-- [ ] **API Development:** RESTful endpoints for programmatic access
+### **Future Pages**
+- Correlation: Time-series correlation analysis
+- Volatility: Regime-conditioned volatility
+- Factors: PCA loadings visualization
 
 ---
 
-## 📈 Key Features
+## ✅ Completed Features
 
-### Automated ETL Pipeline
-- Robust data ingestion with validation
-- Intelligent handling of missing data
-- Timestamp alignment across assets
-- Outlier detection and treatment
-
-### Comprehensive Risk Analytics
-- **Volatility:** Annualized standard deviation with multiple time horizons
-- **Correlation:** Full correlation matrices and average pairwise correlation
-- **Skewness & Kurtosis:** Tail risk and distribution shape metrics
-- **Cross-sectional Dispersion:** Market-wide return variance
-
-### Advanced Visualization
-- **Distribution Plots:** Histograms with normal overlays
-- **Volatility Clustering:** Time-series plots with regime highlighting
-- **Correlation Heatmaps:** Dynamic relationship tracking
-- **Rolling Statistics Dashboard:** Multi-metric overview charts
-
-### Modular Architecture
-- Clean separation of concerns (ETL, analysis, visualization)
-- Extensible design for adding new metrics
-- Configurable parameters for flexible analysis
-- Production-ready code structure
+- [x] **Data Pipeline:** Automated ETL with validation
+- [x] **Feature Engineering:** Volatility, correlation, PCA metrics
+- [x] **Regime Detection:** K-means clustering (K=4)
+- [x] **Validation:** Persistence, UMAP, economic monotonicity
+- [x] **Transition Analysis:** Transition matrix, stability metrics
+- [x] **Prediction Models:** Markov, HMM, RF, XGBoost
+- [x] **Model Evaluation:** Chronological validation, accuracy metrics
+- [x] **FastAPI Backend:** 10 REST endpoints
+- [x] **React Frontend:** Dashboard + Predictions page
+- [x] **Integration:** Frontend ↔ Backend data flow
+- [x] **Visualizations:** 10 prediction charts (confusion matrices, timelines)
+- [x] **Documentation:** FINDINGS.md, API docs, README
 
 ---
 
-## 🧪 Example Output
+## 🚧 In Progress
 
-```
-==================================================
-Loading CSV files...
-==================================================
-✓ Loaded stocks data: (619,040 rows × 8 columns)
-✓ Loaded companies data: (503 rows × 9 columns)
-✓ Loaded index data: (1,259 rows × 7 columns)
+- [ ] **Prediction Timeline Charts:** Historical predicted vs actual
+- [ ] **Confusion Matrix Heatmaps:** Per-model classification errors
+- [ ] **Confidence Over Time:** Model uncertainty tracking
+- [ ] **Real-Time Data:** Live streaming via Alpha Vantage/Polygon.io
+- [ ] **Data Upload:** CSV upload + trigger regime analysis
 
-==================================================
-Cleaning and Pivoting Data...
-==================================================
-Initial rows: 619,040
-Rows dropped: 12,384
-Remaining rows: 606,656
-Unique symbols: 503
-Unique dates: 1,259
+---
 
-==================================================
-Price Matrix P_{t,i} Summary
-==================================================
-Shape: (1,259 × 503)
-Missing values: 2.3%
-Date range: 2013-02-08 to 2018-02-07
+## 🔮 Roadmap
 
-...
-```
+### **Phase 5: Advanced Visualizations**
+- [ ] Prediction timeline (Recharts line chart)
+- [ ] Interactive confusion matrices
+- [ ] Confidence over time charts
+- [ ] Per-regime breakdown visualizations
+
+### **Phase 6: Production Deployment**
+- [ ] AWS/Vercel deployment
+- [ ] PostgreSQL database (historical predictions)
+- [ ] Redis caching layer
+- [ ] User authentication (Auth0)
+- [ ] Rate limiting & monitoring
+
+### **Phase 7: SaaS Features**
+- [ ] Email alerts on regime transitions
+- [ ] Webhook integrations
+- [ ] API subscription tiers
+- [ ] Backtesting framework
+- [ ] Custom universes (beyond S&P 500)
 
 ---
 
 ## 📚 Theoretical Background
 
 This project applies concepts from:
-- **Modern Portfolio Theory (MPT):** Markowitz mean-variance optimization
-- **Factor Models:** Fama-French, APT (Arbitrage Pricing Theory)
-- **Time-Series Econometrics:** GARCH models, structural breaks
+- **Modern Portfolio Theory (MPT):** Markowitz optimization
+- **Factor Models:** Fama-French, APT
+- **Time-Series Econometrics:** Structural breaks, regime switching
 - **Multivariate Statistics:** PCA, correlation analysis
-- **Machine Learning:** Unsupervised clustering, dimensionality reduction
+- **Machine Learning:** K-means, Random Forest, XGBoost, HMM
 
 ### Recommended Reading
 - *Active Portfolio Management* by Grinold & Kahn
-- *Quantitative Equity Portfolio Management* by Qian, Hua & Sorensen
 - *Machine Learning for Asset Managers* by Marcos López de Prado
 - *Advances in Financial Machine Learning* by Marcos López de Prado
+- *Quantitative Equity Portfolio Management* by Qian, Hua & Sorensen
+
+---
+
+## 🧪 Testing
+
+### **Backend Tests**
+```bash
+# Test API endpoints
+python api/test_api.py
+
+# Test regime clustering
+PYTHONPATH=src python src/regime/run_regime_clustering.py
+
+# Test prediction comparison
+PYTHONPATH=src python src/regime/compare_predictions.py
+```
+
+### **Frontend Tests**
+```bash
+cd frontend
+npm run build        # Production build
+npm run preview      # Preview production build
+```
 
 ---
 
@@ -363,7 +508,7 @@ This project applies concepts from:
 
 This project is for **educational and research purposes only**.
 
-It utilizes historical data to explore mathematical and statistical concepts in quantitative finance. This tool is **NOT**:
+It utilizes historical data to explore quantitative finance concepts. This tool is **NOT**:
 - Investment advice or recommendations
 - A trading signal generator
 - A guarantee of future performance
@@ -375,25 +520,39 @@ It utilizes historical data to explore mathematical and statistical concepts in 
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit pull requests or open issues for:
-- Bug fixes
-- New statistical methods
-- Additional visualizations
-- Documentation improvements
-- Performance optimizations
+Contributions welcome! Please feel free to:
+- Report bugs via GitHub Issues
+- Submit pull requests for new features
+- Improve documentation
+- Add new prediction models
+- Optimize performance
 
 ---
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+MIT License - see LICENSE file for details.
 
 ---
 
 ## 👤 Author
 
-**Akishai**  
+**Akishai**
 
-For questions or collaboration inquiries, please open an issue on GitHub.
+Building quantitative finance tools that bridge machine learning and market analysis.
+
+For questions or collaboration: [Open an issue](https://github.com/yourusername/market-regime/issues)
 
 ---
+
+## 🙏 Acknowledgments
+
+- S&P 500 data from publicly available sources
+- shadcn/ui for React components
+- FastAPI team for excellent API framework
+- scikit-learn, XGBoost, hmmlearn contributors
+
+---
+
+**⭐ Star this repo if you find it useful!**
+

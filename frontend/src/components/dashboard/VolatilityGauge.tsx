@@ -1,4 +1,6 @@
 import { cn } from "@/lib/utils";
+import { FlipCard } from "@/components/ui/flip-card";
+import { EducationCard } from "./EducationCard";
 
 interface VolatilityGaugeProps {
   value: number; // 0-100
@@ -33,10 +35,10 @@ export function VolatilityGauge({ value, label, regime }: VolatilityGaugeProps) 
   const config = regimeConfig[regime];
   const rotation = (value / 100) * 180 - 90; // -90 to 90 degrees
 
-  return (
-    <div className="rounded-xl border border-border bg-card p-5">
+  const frontContent = (
+    <div className="rounded-xl border border-border bg-card p-5 hover-border-glow group">
       <div className="mb-4">
-        <h3 className="text-lg font-semibold">{label}</h3>
+        <h3 className="text-lg font-semibold group-hover:text-primary transition-colors">{label}</h3>
         <p className="text-sm text-muted-foreground">Current market regime indicator</p>
       </div>
 
@@ -51,7 +53,7 @@ export function VolatilityGauge({ value, label, regime }: VolatilityGaugeProps) 
               "opacity-20"
             )}
           />
-          
+
           {/* Gauge segments */}
           <div className="absolute bottom-0 left-0 right-0 h-32">
             <svg viewBox="0 0 200 100" className="w-full h-full">
@@ -115,4 +117,22 @@ export function VolatilityGauge({ value, label, regime }: VolatilityGaugeProps) 
       </div>
     </div>
   );
+
+  const backContent = (
+    <EducationCard
+      title="Market Regime Gauge"
+      whatItIs="This gauge shows the current market regime based on correlation and volatility patterns. The needle position indicates the regime intensity from calm (left) to crisis (right), determined by our machine learning clustering model."
+      whyItMatters="Market regimes change how assets move together. In calm regimes, diversification works better. In crisis regimes, correlations spike and 'everything falls together' - understanding the current regime helps adjust your risk exposure."
+      howToRead={`• Low (Green): Stable conditions, correlations normal, good time for diversified strategies
+• Medium (Cyan/Yellow): Normal volatility, typical market behavior
+• High (Yellow/Magenta): Elevated stress, correlations rising, reduce risk exposure
+• Extreme (Magenta/Red): Crisis mode, correlations near 1, defensive positioning critical
+
+Current regime: ${config.label} - ${config.description}`}
+      actionableInsight="During regime transitions, portfolios often experience unexpected losses as correlations shift. Monitor this gauge to anticipate when to reduce leverage or shift to more defensive positions."
+      variant="neon"
+    />
+  );
+
+  return <FlipCard front={frontContent} back={backContent} />;
 }

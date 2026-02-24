@@ -2,6 +2,7 @@ import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
+  Target,
   TrendingUp,
   Grid3X3,
   Activity,
@@ -16,6 +17,7 @@ import { ThemeToggle } from "../ThemeToggle";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+  { icon: Target, label: "Predictions", path: "/predictions" },
   { icon: Grid3X3, label: "Correlation Matrix", path: "/correlation" },
   { icon: Activity, label: "Volatility Regimes", path: "/volatility" },
   { icon: TrendingUp, label: "Factor Analysis", path: "/factors" },
