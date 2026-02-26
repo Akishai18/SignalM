@@ -45,7 +45,7 @@ export function Sidebar() {
           </div>
           {!collapsed && (
             <span className="font-semibold text-lg tracking-tight">
-              Quant<span className="text-gradient">Regime</span>
+              <span className="text-gradient">SignalM</span>
             </span>
           )}
         </div>

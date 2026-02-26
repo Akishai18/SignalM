@@ -69,10 +69,10 @@ const Index = () => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold tracking-tight">
-                Market Regime <span className="text-gradient">Dashboard</span>
+                <span className="text-gradient">SignalM</span>
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
-                S&P 500 correlation analysis & factor exploration
+                Market Signals • Regime Detection & Prediction
               </p>
             </div>
             <div className="flex items-center gap-2 text-sm">
