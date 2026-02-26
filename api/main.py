@@ -39,6 +39,7 @@ app.add_middleware(
         "http://localhost:3000",  # Alternative
         "http://127.0.0.1:5173",
         "http://127.0.0.1:8080",
+        "https://signalm-6qk6omfkt-akishai18s-projects.vercel.app"
     ],
     allow_credentials=True,
     allow_methods=["*"],
