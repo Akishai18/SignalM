@@ -33,14 +33,7 @@ except Exception as e:
 # CORS configuration for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",  # Vite default
-        "http://localhost:8080",  # Vite alternative port
-        "http://localhost:3000",  # Alternative
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:8080",
-        "https://signalm-6qk6omfkt-akishai18s-projects.vercel.app"
-    ],
+    allow_origins=["*"],  # Allow all origins for now (you can restrict later)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
