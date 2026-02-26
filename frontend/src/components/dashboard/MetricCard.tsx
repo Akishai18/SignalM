@@ -1,6 +1,17 @@
 import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { FlipCard } from "@/components/ui/flip-card";
+import { EducationCard } from "./EducationCard";
+
+interface EducationalContent {
+  title: string;
+  whatItIs: string;
+  whyItMatters: string;
+  howToRead: string;
+  actionableInsight?: string;
+  variant?: "default" | "neon" | "warning" | "success";
+}
 
 interface MetricCardProps {
   title: string;
@@ -10,6 +21,7 @@ interface MetricCardProps {
   icon?: ReactNode;
   variant?: "default" | "neon" | "warning" | "success";
   className?: string;
+  educational?: EducationalContent;
 }
 
 export function MetricCard({
@@ -20,16 +32,17 @@ export function MetricCard({
   icon,
   variant = "default",
   className,
+  educational,
 }: MetricCardProps) {
   const isPositive = change && change > 0;
   const isNegative = change && change < 0;
   const isNeutral = change === 0;
 
-  return (
+  const cardContent = (
     <div
       className={cn(
-        "relative overflow-hidden rounded-xl p-5 transition-all duration-300",
-        "border border-border bg-card hover:shadow-lg",
+        "group relative overflow-hidden rounded-xl p-5 transition-all duration-300 cursor-pointer",
+        "border border-border bg-card hover-lift hover-glow",
         variant === "neon" && "neon-border hover:glow-cyan",
         variant === "warning" && "border-neon-yellow/30 hover:shadow-neon-yellow/10",
         variant === "success" && "border-neon-green/30 hover:shadow-neon-green/10",
@@ -37,16 +50,16 @@ export function MetricCard({
       )}
     >
       {/* Background decoration */}
-      <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-gradient-to-br from-primary/5 to-transparent" />
-      
+      <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-gradient-to-br from-primary/5 to-transparent group-hover:from-primary/10 transition-all duration-300" />
+
       <div className="relative">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
-            <p className="text-sm font-medium text-muted-foreground">{title}</p>
-            <p className="text-3xl font-bold tracking-tight font-mono">{value}</p>
+            <p className="text-sm font-medium text-muted-foreground group-hover:text-primary transition-colors">{title}</p>
+            <p className="text-3xl font-bold tracking-tight font-mono group-hover:scale-105 transition-transform inline-block">{value}</p>
           </div>
           {icon && (
-            <div className="rounded-lg bg-primary/10 p-2.5 text-primary">
+            <div className="rounded-lg bg-primary/10 p-2.5 text-primary group-hover:bg-primary/20 group-hover:scale-110 transition-all">
               {icon}
             </div>
           )}
@@ -75,4 +88,25 @@ export function MetricCard({
       </div>
     </div>
   );
+
+  // If educational content is provided, wrap in FlipCard
+  if (educational) {
+    return (
+      <FlipCard
+        front={cardContent}
+        back={
+          <EducationCard
+            title={educational.title}
+            whatItIs={educational.whatItIs}
+            whyItMatters={educational.whyItMatters}
+            howToRead={educational.howToRead}
+            actionableInsight={educational.actionableInsight}
+            variant={educational.variant || variant}
+          />
+        }
+      />
+    );
+  }
+
+  return cardContent;
 }
