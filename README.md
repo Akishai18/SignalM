@@ -1,4 +1,4 @@
-# Market Regime Detection & Prediction System
+# SignalM - Market Regime Detection & Prediction
 
 ![Python](https://img.shields.io/badge/Python-3.9%2B-blue)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0%2B-blue)
@@ -9,7 +9,7 @@
 
 ## 📖 Overview
 
-**Market Regime** is a full-stack quantitative finance application that identifies distinct market states (Calm, Crisis, Elevated Stress, Transition) from historical equity data and predicts future regime transitions using machine learning. Built with Python, TypeScript, and modern ML frameworks, this system provides real-time regime analysis through an interactive web dashboard backed by a production-ready REST API.
+**SignalM** is a full-stack quantitative finance application that identifies distinct market states (Calm, Crisis, Elevated Stress, Transition) from historical equity data and predicts future regime transitions using machine learning. Built with Python, TypeScript, and modern ML frameworks, this system provides real-time regime analysis through an interactive web dashboard backed by a production-ready REST API.
 
 The platform analyzes 500+ S&P 500 constituents (2012-2024) to extract market structure features—realized volatility, cross-sectional correlation, PCA-based dimensionality—and uses unsupervised learning (K-means) to categorize regimes. Four prediction models (Markov chains, Hidden Markov Models, Random Forest, XGBoost) forecast regime transitions at 1-day, 7-day, and 30-day horizons with comprehensive accuracy validation.
 
@@ -83,8 +83,8 @@ node --version    # Should be 18+
 
 ### **1. Clone Repository**
 ```bash
-git clone https://github.com/yourusername/market-regime.git
-cd market-regime
+git clone https://github.com/yourusername/signalm.git
+cd signalm
 ```
 
 ### **2. Backend Setup**
@@ -245,7 +245,7 @@ Where:
 ## 📂 Project Structure
 
 ```bash
-market-regime/
+signalm/
 ├── api/                           # FastAPI backend
 │   ├── main.py                    # API application (10 endpoints)
 │   ├── routes/                    # Route modules
@@ -541,7 +541,7 @@ MIT License - see LICENSE file for details.
 
 Building quantitative finance tools that bridge machine learning and market analysis.
 
-For questions or collaboration: [Open an issue](https://github.com/yourusername/market-regime/issues)
+For questions or collaboration: [Open an issue](https://github.com/yourusername/signalm/issues)
 
 ---
 

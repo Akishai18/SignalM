@@ -23,6 +23,11 @@ import api, {
   IndexRegime,
   IndexComparison,
   IndexHistoryResponse,
+  // NEW: Real predictions API types
+  PredictionsResponse,
+  HorizonPrediction,
+  ModelComparisonNew,
+  IndicesPredictionsComparison,
 } from '@/lib/api';
 
 // Query keys for cache management
@@ -49,6 +54,11 @@ export const queryKeys = {
   indicesComparison: ['indices', 'comparison'] as const,
   indexPerformance: (symbol: string) => ['indices', symbol, 'performance'] as const,
   indexMergedData: (symbol: string, limit: number) => ['indices', symbol, 'merged', limit] as const,
+  // NEW: Real predictions API
+  predictions: (symbol: string) => ['predictions', symbol, 'current'] as const,
+  horizonPrediction: (symbol: string, days: number) => ['predictions', symbol, 'horizon', days] as const,
+  modelAccuracy: (symbol: string) => ['predictions', symbol, 'accuracy'] as const,
+  indicesPredictions: ['predictions', 'indices', 'comparison'] as const,
 };
 
 /**
@@ -366,4 +376,72 @@ export function useDashboardData() {
       forecast.error ||
       history.error,
   };
+}
+
+// ============================================================================
+// NEW: Real Predictions API Hooks
+// ============================================================================
+
+/**
+ * Hook to fetch current predictions for all horizons (1d, 7d, 30d)
+ * @param symbol - Index symbol (SPY, QQQ, DIA, IWM)
+ * Refetch every minute
+ */
+export function usePredictions(
+  symbol: string = 'SPY'
+): UseQueryResult<PredictionsResponse, Error> {
+  return useQuery({
+    queryKey: queryKeys.predictions(symbol),
+    queryFn: () => api.getPredictions(symbol),
+    staleTime: 60 * 1000, // 1 minute
+    refetchInterval: 60 * 1000, // Auto-refresh every minute
+  });
+}
+
+/**
+ * Hook to fetch prediction for specific horizon
+ * @param symbol - Index symbol
+ * @param days - Prediction horizon (1, 7, or 30)
+ */
+export function useHorizonPrediction(
+  symbol: string,
+  days: number
+): UseQueryResult<HorizonPrediction, Error> {
+  return useQuery({
+    queryKey: queryKeys.horizonPrediction(symbol, days),
+    queryFn: () => api.getHorizonPrediction(symbol, days),
+    staleTime: 60 * 1000, // 1 minute
+    enabled: [1, 7, 30].includes(days), // Only fetch for valid horizons
+  });
+}
+
+/**
+ * Hook to fetch model accuracy comparison
+ * @param symbol - Index symbol
+ */
+export function useModelAccuracy(
+  symbol: string = 'SPY'
+): UseQueryResult<ModelComparisonNew, Error> {
+  return useQuery({
+    queryKey: queryKeys.modelAccuracy(symbol),
+    queryFn: () => api.getModelAccuracy(symbol),
+    staleTime: 5 * 60 * 1000, // 5 minutes (accuracy doesn't change often)
+  });
+}
+
+/**
+ * Hook to fetch predictions comparison across all indices
+ * Shows regime divergence across SPY, QQQ, DIA, IWM
+ * Refetch every minute
+ */
+export function useIndicesPredictionsComparison(): UseQueryResult<
+  IndicesPredictionsComparison,
+  Error
+> {
+  return useQuery({
+    queryKey: queryKeys.indicesPredictions,
+    queryFn: api.getIndicesPredictionsComparison,
+    staleTime: 60 * 1000, // 1 minute
+    refetchInterval: 60 * 1000, // Auto-refresh every minute
+  });
 }

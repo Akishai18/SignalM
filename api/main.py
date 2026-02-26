@@ -1,5 +1,5 @@
 """
-FastAPI backend for Market Regime Dashboard
+FastAPI backend for SignalM
 Serves regime detection and prediction data to the frontend
 """
 from fastapi import FastAPI, HTTPException
@@ -17,10 +17,18 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="Market Regime API",
+    title="SignalM API",
     description="API for market regime detection and prediction",
     version="1.0.0"
 )
+
+# Import and include prediction router
+try:
+    from api.routers.predictions import router as predictions_router
+    app.include_router(predictions_router)
+    print("✓ Predictions router loaded successfully")
+except Exception as e:
+    print(f"⚠ Failed to load predictions router: {e}")
 
 # CORS configuration for frontend
 app.add_middleware(
@@ -261,7 +269,7 @@ def root():
     """Health check endpoint"""
     return {
         "status": "healthy",
-        "service": "Market Regime API",
+        "service": "SignalM API",
         "version": "1.0.0",
         "timestamp": datetime.now().isoformat()
     }

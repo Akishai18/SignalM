@@ -52,6 +52,55 @@ export interface Forecast {
   horizons: ForecastHorizon[];
 }
 
+// NEW: Real predictions API types
+export interface ModelPrediction {
+  model_name: string;
+  predicted_regime: number;
+  predicted_regime_name: string;
+  confidence: number;
+  probabilities: Record<string, number>;
+}
+
+export interface HorizonPrediction {
+  horizon_days: number;
+  ensemble: ModelPrediction;
+  individual_models: ModelPrediction[];
+  weights: Record<string, number>;
+}
+
+export interface PredictionsResponse {
+  symbol: string;
+  current_regime: number | null;
+  current_date: string;
+  predictions: Record<string, HorizonPrediction>; // "1d", "7d", "30d"
+  timestamp: string;
+}
+
+export interface ModelAccuracy {
+  model_name: string;
+  horizon_days: number;
+  train_accuracy: number;
+  test_accuracy: number | null;
+  mean_confidence: number;
+}
+
+export interface ModelComparisonNew {
+  symbol: string;
+  horizons: number[];
+  accuracies: ModelAccuracy[];
+  best_model_by_horizon: Record<number, string>;
+}
+
+export interface IndicesPredictionsComparison {
+  indices: Record<string, Record<string, {
+    predicted_regime: number;
+    predicted_regime_name: string;
+    confidence: number;
+    probabilities: Record<string, number>;
+  }>>;
+  timestamp: string;
+}
+
 export interface ModelComparison {
   models: Array<{
     model_name: string;
@@ -278,7 +327,8 @@ export const api = {
   },
 
   /**
-   * Get regime predictions for 1/7/30-day horizons
+   * Get regime predictions for 1/7/30-day horizons (OLD - mock data)
+   * @deprecated Use getPredictions() instead
    */
   async getForecast(): Promise<Forecast> {
     const response = await fetch(`${API_BASE_URL}/api/predictions/forecast`);
@@ -286,10 +336,49 @@ export const api = {
   },
 
   /**
-   * Get accuracy comparison of all 4 prediction models
+   * Get accuracy comparison of all 4 prediction models (OLD - mock data)
+   * @deprecated Use getModelAccuracy() instead
    */
   async getModelComparison(): Promise<ModelComparison> {
     const response = await fetch(`${API_BASE_URL}/api/predictions/comparison`);
+    return handleResponse(response);
+  },
+
+  // ===== NEW: Real Predictions API =====
+
+  /**
+   * Get current predictions for all horizons (1d, 7d, 30d)
+   * @param symbol - Index symbol (SPY, QQQ, DIA, IWM)
+   */
+  async getPredictions(symbol: string = 'SPY'): Promise<PredictionsResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/predictions/${symbol}/current`);
+    return handleResponse(response);
+  },
+
+  /**
+   * Get prediction for specific horizon
+   * @param symbol - Index symbol
+   * @param days - Prediction horizon (1, 7, or 30)
+   */
+  async getHorizonPrediction(symbol: string, days: number): Promise<HorizonPrediction> {
+    const response = await fetch(`${API_BASE_URL}/api/predictions/${symbol}/horizon/${days}`);
+    return handleResponse(response);
+  },
+
+  /**
+   * Get model accuracy comparison
+   * @param symbol - Index symbol
+   */
+  async getModelAccuracy(symbol: string = 'SPY'): Promise<ModelComparisonNew> {
+    const response = await fetch(`${API_BASE_URL}/api/predictions/${symbol}/accuracy`);
+    return handleResponse(response);
+  },
+
+  /**
+   * Compare predictions across all indices
+   */
+  async getIndicesPredictionsComparison(): Promise<IndicesPredictionsComparison> {
+    const response = await fetch(`${API_BASE_URL}/api/predictions/compare`);
     return handleResponse(response);
   },
 

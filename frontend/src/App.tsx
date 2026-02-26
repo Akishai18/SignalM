@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
-import PredictionsPage from "./pages/PredictionsPage";
+import PredictionsPageNew from "./pages/PredictionsPageNew";
 import CorrelationPage from "./pages/CorrelationPage";
 import VolatilityPage from "./pages/VolatilityPage";
 import FactorsPage from "./pages/FactorsPage";
@@ -22,7 +22,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/predictions" element={<PredictionsPage />} />
+          <Route path="/predictions" element={<PredictionsPageNew />} />
           <Route path="/correlation" element={<CorrelationPage />} />
           <Route path="/volatility" element={<VolatilityPage />} />
           <Route path="/factors" element={<FactorsPage />} />
