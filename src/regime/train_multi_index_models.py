@@ -7,43 +7,87 @@ Saves trained models as .pkl files for API serving
 import pandas as pd
 import numpy as np
 import os
+import sys
 import joblib
 import warnings
 warnings.filterwarnings('ignore')
 
-from regime.transitions import compute_transition_statistics
-from regime.hmm_predict import fit_hmm_to_regimes
+# Add src to path for regime imports
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__))))
+
+from regime.transitions import compute_transition_statistics, compute_transition_matrix
+from regime.hmm_predict import fit_hmm_to_regimes, compute_hmm_accuracy
+from regime.predict import compute_prediction_accuracy_baseline
 from regime.feature_predict import (
     build_prediction_dataset,
     train_all_predictors,
+    compute_baseline_accuracy_by_horizon,
     DEFAULT_HORIZONS,
     DEFAULT_LAGS
 )
+import json
 
 
 def load_index_data(symbol: str, data_dir: str = 'data') -> dict:
-    """Load regime labels and features for a given index"""
+    """Load regime labels and features for a given index.
+
+    Uses market-wide regime labels (same for all indices) combined with
+    index-specific features (returns, volatility, momentum, etc.) to give
+    each index unique model training data.
+    """
     print(f"\n  Loading data for {symbol}...")
 
-    # Try to load index-specific files
-    regime_labels_path = f'regime_results/{symbol.lower()}_regime_labels_k4.csv'
-    features_path = f'regime_results/{symbol.lower()}_regime_features_normalized.csv'
+    # Get project root (two levels up from this file: src/regime/ -> src/ -> root/)
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-    # Fallback to SPY if index-specific files don't exist
-    if not os.path.exists(regime_labels_path):
-        print(f"    ⚠ {symbol}-specific regime labels not found, using SPY labels")
-        regime_labels_path = 'regime_results/regime_labels_k4.csv'
-
-    if not os.path.exists(features_path):
-        print(f"    ⚠ {symbol}-specific features not found, using SPY features")
-        features_path = 'regime_results/regime_features_normalized.csv'
-
-    # Load data
+    # Regime labels are market-wide (same for all indices)
+    regime_labels_path = os.path.join(project_root, 'regime_results', 'regime_labels_k4.csv')
     regime_labels = pd.read_csv(regime_labels_path, index_col=0, parse_dates=True).squeeze()
-    feature_df = pd.read_csv(features_path, index_col=0, parse_dates=True)
 
-    print(f"    ✓ Loaded {len(regime_labels)} regime labels")
-    print(f"    ✓ Loaded {feature_df.shape} feature matrix")
+    # Market-wide PCA features (volatility, correlation, PCA components)
+    market_features_path = os.path.join(project_root, 'regime_results', 'regime_features_normalized.csv')
+    market_features = pd.read_csv(market_features_path, index_col=0, parse_dates=True)
+
+    # Index-specific features (returns, volatility, momentum, RSI, etc.)
+    index_features_path = os.path.join(project_root, 'regime_results', 'indices', f'{symbol.lower()}_features.csv')
+
+    if os.path.exists(index_features_path):
+        index_features = pd.read_csv(index_features_path, index_col=0, parse_dates=True)
+
+        # Select useful derived features (not raw prices)
+        index_feature_cols = [
+            'returns', 'log_returns',
+            'vol_21d', 'vol_63d', 'vol_252d',
+            'momentum_21d', 'momentum_63d',
+            'price_to_sma21', 'price_to_sma50', 'price_to_sma200',
+            'sma21_slope', 'sma50_slope',
+            'rsi', 'drawdown'
+        ]
+        available_cols = [c for c in index_feature_cols if c in index_features.columns]
+        index_features = index_features[available_cols]
+
+        # Prefix columns with symbol to avoid name conflicts
+        index_features.columns = [f'{symbol.lower()}_{col}' for col in index_features.columns]
+
+        # Combine market-wide + index-specific features
+        feature_df = market_features.join(index_features, how='inner')
+        print(f"    ✓ Combined market features ({market_features.shape[1]} cols) + {symbol} features ({len(available_cols)} cols)")
+    else:
+        print(f"    ⚠ {symbol}-specific features not found, using market features only")
+        feature_df = market_features
+
+    # Align regime labels with features (inner join on dates)
+    common_dates = regime_labels.index.intersection(feature_df.index)
+    regime_labels = regime_labels.loc[common_dates]
+    feature_df = feature_df.loc[common_dates]
+
+    # Drop rows with NaN
+    valid_mask = feature_df.notna().all(axis=1)
+    regime_labels = regime_labels.loc[valid_mask]
+    feature_df = feature_df.loc[valid_mask]
+
+    print(f"    ✓ Loaded {len(regime_labels)} regime labels (market-wide)")
+    print(f"    ✓ Loaded {feature_df.shape} feature matrix ({feature_df.shape[1]} features)")
     print(f"    ✓ Date range: {regime_labels.index.min()} to {regime_labels.index.max()}")
 
     return {
@@ -134,6 +178,11 @@ def train_ml_models(
 
 def save_models(symbol: str, models: dict, save_dir: str = 'models'):
     """Save all trained models for a given index"""
+    # Get project root if save_dir is relative
+    if not os.path.isabs(save_dir):
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        save_dir = os.path.join(project_root, save_dir)
+
     symbol_dir = os.path.join(save_dir, symbol.upper())
     os.makedirs(symbol_dir, exist_ok=True)
 
@@ -175,6 +224,13 @@ def save_models(symbol: str, models: dict, save_dir: str = 'models'):
         joblib.dump(ml_data['prediction_data']['feature_names'], feature_names_path)
         print(f"    ✓ Saved feature names: {feature_names_path}")
 
+    # Save accuracy metrics for API
+    if 'accuracies' in models:
+        accuracy_path = os.path.join(symbol_dir, 'model_accuracies.json')
+        with open(accuracy_path, 'w') as f:
+            json.dump(models['accuracies'], f, indent=2)
+        print(f"    ✓ Saved accuracy metrics: {accuracy_path}")
+
     # Save metadata
     metadata = {
         'symbol': symbol.upper(),
@@ -188,7 +244,7 @@ def save_models(symbol: str, models: dict, save_dir: str = 'models'):
     print(f"    ✓ Saved metadata: {metadata_path}")
 
 
-def train_index(symbol: str, save_dir: str = 'models') -> dict:
+def train_index(symbol: str, save_dir: str = 'models', train_ratio: float = 0.7) -> dict:
     """Train all models for a single index"""
     print(f"\n{'='*70}")
     print(f"TRAINING MODELS FOR {symbol.upper()}")
@@ -209,7 +265,90 @@ def train_index(symbol: str, save_dir: str = 'models') -> dict:
     models['hmm'] = train_hmm_model(regime_labels, features)
 
     # 3. ML models (RF + XGBoost)
-    models['ml'] = train_ml_models(regime_labels, features)
+    models['ml'] = train_ml_models(regime_labels, features, train_ratio=train_ratio)
+
+    # 4. Compute accuracy metrics with PROPER train/test split
+    print(f"\n    [4/4] Computing Test Accuracies (avoiding data leakage)...")
+
+    n = len(regime_labels)
+    train_size = int(n * train_ratio)
+    train_labels = regime_labels.iloc[:train_size]
+    test_labels = regime_labels.iloc[train_size:]
+
+    print(f"      Train: {len(train_labels)} samples | Test: {len(test_labels)} samples")
+
+    accuracies = []
+
+    # Markov baseline accuracy (1-day horizon only, tested on test set)
+    if models['markov'] is not None:
+        # Compute transition matrix on TRAINING data only
+        train_transition_matrix, _ = compute_transition_matrix(train_labels)
+
+        # Test on TEST data only
+        markov_acc = compute_prediction_accuracy_baseline(
+            regime_labels=regime_labels,
+            transition_matrix=train_transition_matrix,
+            test_start_idx=train_size
+        )
+
+        print(f"      Markov Chain: {markov_acc['accuracy']:.2%} test accuracy")
+
+        accuracies.append({
+            'model_name': 'Markov Chain',
+            'horizon_days': 1,
+            'train_accuracy': float(markov_acc['accuracy']),
+            'test_accuracy': float(markov_acc['accuracy']),
+            'mean_confidence': float(markov_acc['mean_confidence'])
+        })
+
+    # HMM accuracy (1-day horizon only, tested on test set)
+    if models['hmm'] is not None:
+        hmm_acc = compute_hmm_accuracy(
+            hmm_model=models['hmm']['hmm_model'],
+            feature_matrix=features,
+            regime_labels=regime_labels,
+            test_start_idx=train_size
+        )
+
+        print(f"      HMM: {hmm_acc['accuracy']:.2%} test accuracy")
+
+        accuracies.append({
+            'model_name': 'HMM',
+            'horizon_days': 1,
+            'train_accuracy': float(hmm_acc['accuracy']),
+            'test_accuracy': float(hmm_acc['accuracy']),
+            'mean_confidence': float(hmm_acc['mean_confidence'])
+        })
+
+    # ML model accuracies (already computed with proper train/test split)
+    if models['ml'] is not None:
+        for horizon, horizon_data in models['ml']['trained_results'].items():
+            # Random Forest
+            if 'random_forest' in horizon_data['models']:
+                rf_eval = horizon_data['models']['random_forest']['eval']
+                accuracies.append({
+                    'model_name': 'Random Forest',
+                    'horizon_days': horizon,
+                    'train_accuracy': float(rf_eval['accuracy']),
+                    'test_accuracy': float(rf_eval['accuracy']),
+                    'mean_confidence': float(rf_eval.get('mean_confidence', 0.0))
+                })
+                print(f"      Random Forest ({horizon}d): {rf_eval['accuracy']:.2%} test accuracy")
+
+            # XGBoost
+            if 'xgboost' in horizon_data['models']:
+                xgb_eval = horizon_data['models']['xgboost']['eval']
+                accuracies.append({
+                    'model_name': 'XGBoost',
+                    'horizon_days': horizon,
+                    'train_accuracy': float(xgb_eval['accuracy']),
+                    'test_accuracy': float(xgb_eval['accuracy']),
+                    'mean_confidence': float(xgb_eval.get('mean_confidence', 0.0))
+                })
+                print(f"      XGBoost ({horizon}d): {xgb_eval['accuracy']:.2%} test accuracy")
+
+    models['accuracies'] = accuracies
+    print(f"      ✓ Accuracy metrics computed")
 
     # Save models
     save_models(symbol, models, save_dir)
@@ -267,6 +406,11 @@ def train_all_indices(indices: list = None, save_dir: str = 'models'):
 
 def print_model_inventory(models_dir: str = 'models'):
     """Print inventory of saved models"""
+    # Get project root if models_dir is relative
+    if not os.path.isabs(models_dir):
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        models_dir = os.path.join(project_root, models_dir)
+
     print(f"\n{'='*70}")
     print("MODEL INVENTORY")
     print(f"{'='*70}")
