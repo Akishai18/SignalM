@@ -455,17 +455,17 @@ def run_regime_pipeline(
     print("\n" + "="*60)
     print("STEP 11: REGIME PREDICTION (BASELINE)")
     print("="*60)
-    
+
     print("\n[11.1] Baseline Prediction Method (Markov Chain)...")
     print("  Using historical transition probabilities to predict future regimes")
-    
+
     try:
         # Get current regime (most recent)
         current_regime = regime_labels.iloc[-1]
         current_date = regime_labels.index[-1]
-        
+
         print(f"\n  Current Regime: {current_regime} (as of {current_date.strftime('%Y-%m-%d')})")
-        
+
         # Show prediction for current regime
         print_baseline_prediction(
             current_regime=current_regime,
@@ -473,18 +473,42 @@ def run_regime_pipeline(
             regime_label_map=regime_label_map,
             horizon=30
         )
-        
-        # Compute prediction accuracy on historical data
-        print("\n[11.2] Computing Prediction Accuracy on Historical Data...")
+
+        # Compute prediction accuracy with PROPER train/test split (avoid data leakage)
+        print("\n[11.2] Computing Prediction Accuracy on Test Data (70/30 split)...")
+        print("  ⚠ IMPORTANT: Using proper train/test split to avoid data leakage")
+
+        # Split data for proper evaluation
+        n = len(regime_labels)
+        train_size = int(n * 0.7)
+
+        # Compute transition matrix ONLY on training data
+        train_labels = regime_labels.iloc[:train_size]
+        test_labels = regime_labels.iloc[train_size:]
+
+        from regime.transitions import compute_transition_matrix
+        train_transition_matrix, _ = compute_transition_matrix(train_labels)
+
+        print(f"  Train period: {train_labels.index[0].strftime('%Y-%m-%d')} to {train_labels.index[-1].strftime('%Y-%m-%d')} ({len(train_labels)} days)")
+        print(f"  Test period: {test_labels.index[0].strftime('%Y-%m-%d')} to {test_labels.index[-1].strftime('%Y-%m-%d')} ({len(test_labels)} days)")
+
+        # Test accuracy ONLY on test data
         accuracy_results = compute_prediction_accuracy_baseline(
             regime_labels=regime_labels,
-            transition_matrix=transition_stats['transition_matrix'],
-            test_start_idx=None  # Use all data for now
+            transition_matrix=train_transition_matrix,  # Use train-only transition matrix
+            test_start_idx=train_size  # Test only on held-out data
         )
-        print_prediction_accuracy(accuracy_results, regime_label_map=regime_label_map)
-        
+        print_prediction_accuracy(
+            accuracy_results,
+            regime_label_map=regime_label_map,
+            title="BASELINE PREDICTION ACCURACY (TEST SET ONLY)"
+        )
+
+        print("\n  📊 This is the CORRECT accuracy (no data leakage)")
+        print("  → Compare this to Random Forest and XGBoost test accuracies")
+
         print("\n✓ Baseline prediction completed")
-        
+
     except Exception as e:
         print(f"  ⚠ Error performing baseline prediction: {e}")
         import traceback
@@ -529,15 +553,17 @@ def run_regime_pipeline(
             actual_current_regime=actual_current_regime
         )
         
-        # Compute HMM accuracy
-        print("\n[12.4] Computing HMM Prediction Accuracy...")
+        # Compute HMM accuracy with proper train/test split
+        print("\n[12.4] Computing HMM Prediction Accuracy (Test Set Only)...")
+        print("  Using same 70/30 split for fair comparison")
+
         hmm_accuracy = compute_hmm_accuracy(
             hmm_model=hmm_model,
             feature_matrix=X,
             regime_labels=regime_labels,
-            test_start_idx=None
+            test_start_idx=train_size  # Use same train size as Markov baseline
         )
-        print_prediction_accuracy(hmm_accuracy, regime_label_map=regime_label_map, title="HMM PREDICTION ACCURACY")
+        print_prediction_accuracy(hmm_accuracy, regime_label_map=regime_label_map, title="HMM PREDICTION ACCURACY (TEST SET ONLY)")
         
         print("\n✓ HMM prediction completed")
         
@@ -642,6 +668,52 @@ def run_regime_pipeline(
         import traceback
         traceback.print_exc()
 
+    # Save accuracy metrics for API consumption
+    if save_dir:
+        print("\n" + "="*60)
+        print("SAVING ACCURACY METRICS FOR API")
+        print("="*60)
+
+        accuracy_summary = {
+            'baseline_markov': {
+                'test_accuracy': accuracy_results['accuracy'] if 'accuracy_results' in locals() and accuracy_results else None,
+                'mean_confidence': accuracy_results['mean_confidence'] if 'accuracy_results' in locals() and accuracy_results else None
+            },
+            'hmm': {
+                'test_accuracy': hmm_accuracy['accuracy'] if 'hmm_accuracy' in locals() and hmm_accuracy else None,
+                'mean_confidence': hmm_accuracy['mean_confidence'] if 'hmm_accuracy' in locals() and hmm_accuracy else None
+            },
+            'feature_based': {
+                'baseline_by_horizon': baseline_by_horizon if 'baseline_by_horizon' in locals() else {},
+                'random_forest': {},
+                'xgboost': {}
+            }
+        }
+
+        # Add feature-based model accuracies
+        if feature_prediction_results:
+            for horizon, hdata in feature_prediction_results.items():
+                for model_key, model_data in hdata['models'].items():
+                    if 'eval' in model_data:
+                        if model_key == 'random_forest':
+                            accuracy_summary['feature_based']['random_forest'][horizon] = {
+                                'test_accuracy': model_data['eval']['accuracy'],
+                                'mean_confidence': model_data['eval'].get('mean_confidence', 0.0)
+                            }
+                        elif model_key == 'xgboost':
+                            accuracy_summary['feature_based']['xgboost'][horizon] = {
+                                'test_accuracy': model_data['eval']['accuracy'],
+                                'mean_confidence': model_data['eval'].get('mean_confidence', 0.0)
+                            }
+
+        # Save to file
+        import json
+        accuracy_file = os.path.join(save_dir, "model_accuracies.json")
+        with open(accuracy_file, 'w') as f:
+            json.dump(accuracy_summary, f, indent=2)
+        print(f"✓ Accuracy metrics saved to {accuracy_file}")
+        print("  → API will use these values for model comparison")
+
     # Summary
     print("\n" + "="*60)
     print("REGIME QUALITY SUMMARY")
@@ -654,7 +726,7 @@ def run_regime_pipeline(
     print(f"Semantic Labeling: ✓ Complete (see Step 7 above)")
     print(f"Reality Validation: ✓ Event alignment checked (full plot in main.py)")
     print("\n" + "="*60)
-    
+
     plt.show()
     
     return {

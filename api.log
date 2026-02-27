@@ -1,0 +1,234 @@
+INFO:     Will watch for changes in these directories: ['/Users/akishai/Downloads/Quant-Project-1']
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [80603] using StatReload
+INFO:     Started server process [80606]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+✓ Predictions router loaded successfully
+✓ Loaded prediction engine for DIA
+  - 3 models available
+  - Horizons: [1, 7, 30]
+  - Regime count: 4
+INFO:     127.0.0.1:58576 - "GET /api/predictions/DIA/accuracy HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self.scope, self.receive, self.send
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/fastapi/applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/starlette/middleware/cors.py", line 87, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 119, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 105, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 424, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 314, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/starlette/concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/anyio/_backends/_asyncio.py", line 2502, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/anyio/_backends/_asyncio.py", line 986, in run
+    result = context.run(func, *args)
+  File "/Users/akishai/Downloads/Quant-Project-1/api/routers/predictions.py", line 369, in get_model_accuracy
+    accuracies.append(ModelAccuracy(**acc_data))
+                      ~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/pydantic/main.py", line 250, in __init__
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+pydantic_core._pydantic_core.ValidationError: 1 validation error for ModelAccuracy
+train_accuracy
+  Input should be a valid number [type=float_type, input_value=None, input_type=NoneType]
+    For further information visit https://errors.pydantic.dev/2.12/v/float_type
+INFO:     127.0.0.1:58578 - "GET /api/predictions/DIA/accuracy HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self.scope, self.receive, self.send
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/fastapi/applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/starlette/middleware/cors.py", line 87, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 119, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 105, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 424, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 314, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/starlette/concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/anyio/_backends/_asyncio.py", line 2502, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/anyio/_backends/_asyncio.py", line 986, in run
+    result = context.run(func, *args)
+  File "/Users/akishai/Downloads/Quant-Project-1/api/routers/predictions.py", line 369, in get_model_accuracy
+    accuracies.append(ModelAccuracy(**acc_data))
+                      ~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "/Users/akishai/Downloads/Quant-Project-1/.venv/lib/python3.13/site-packages/pydantic/main.py", line 250, in __init__
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+pydantic_core._pydantic_core.ValidationError: 1 validation error for ModelAccuracy
+train_accuracy
+  Input should be a valid number [type=float_type, input_value=None, input_type=NoneType]
+    For further information visit https://errors.pydantic.dev/2.12/v/float_type
+WARNING:  StatReload detected changes in 'api/routers/predictions.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [80606]
+INFO:     Started server process [81609]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+✓ Predictions router loaded successfully
+✓ Loaded prediction engine for DIA
+  - 3 models available
+  - Horizons: [1, 7, 30]
+  - Regime count: 4
+INFO:     127.0.0.1:58651 - "GET /api/predictions/DIA/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58655 - "GET /api/predictions/DIA/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58674 - "GET /api/predictions/DIA/accuracy HTTP/1.1" 200 OK
+✓ Loaded prediction engine for SPY
+  - 3 models available
+  - Horizons: [1, 7, 30]
+  - Regime count: 4
+INFO:     127.0.0.1:58672 - "GET /api/predictions/DIA/current HTTP/1.1" 200 OK
+✓ Loaded prediction engine for QQQ
+  - 3 models available
+  - Horizons: [1, 7, 30]
+  - Regime count: 4
+✓ Loaded prediction engine for IWM
+  - 3 models available
+  - Horizons: [1, 7, 30]
+  - Regime count: 4
+INFO:     127.0.0.1:58672 - "GET /api/predictions/SPY/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58674 - "GET /api/predictions/SPY/current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58682 - "GET /api/predictions/compare HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58674 - "GET /api/predictions/QQQ/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58672 - "GET /api/predictions/QQQ/current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58674 - "GET /api/predictions/DIA/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58682 - "GET /api/predictions/DIA/current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58674 - "GET /api/predictions/IWM/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58672 - "GET /api/predictions/IWM/current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58698 - "GET /api/predictions/compare HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58705 - "GET /api/predictions/SPY/current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61420 - "GET /api/predictions/SPY/current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61419 - "GET /api/predictions/compare HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61419 - "GET /api/predictions/SPY/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61420 - "GET /api/predictions/SPY/current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61433 - "GET /api/predictions/compare HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61501 - "GET /api/predictions/SPY/current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61501 - "GET /api/predictions/compare HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61516 - "GET /api/predictions/SPY/current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61516 - "GET /api/predictions/compare HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61707 - "GET /api/predictions/SPY/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61704 - "GET /api/predictions/SPY/current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61705 - "GET /api/predictions/compare HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64543 - "GET /api/predictions/SPY/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64542 - "GET /api/predictions/SPY/current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64541 - "GET /api/predictions/compare HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64580 - "GET /api/predictions/SPY/accuracy HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64541 - "GET /api/predictions/SPY/current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64581 - "GET /api/predictions/compare HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64682 - "GET /api/predictions/SPY/current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64682 - "GET /api/predictions/compare HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [81609]
+INFO:     Stopping reloader process [80603]
