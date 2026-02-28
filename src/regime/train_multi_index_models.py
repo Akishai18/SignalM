@@ -235,7 +235,7 @@ def save_models(symbol: str, models: dict, save_dir: str = 'models'):
     metadata = {
         'symbol': symbol.upper(),
         'n_regimes': 4,
-        'horizons': [1, 7, 30],
+        'horizons': list(models['ml']['trained_results'].keys()) if models.get('ml') and models['ml'] is not None else [1, 7, 30],
         'train_date': pd.Timestamp.now().strftime('%Y-%m-%d'),
         'models_trained': list(models.keys())
     }

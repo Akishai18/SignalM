@@ -310,27 +310,141 @@ class RegimePredictionEngine:
             'weights': weights
         }
 
+    DISPLAY_HORIZONS = [1, 7, 30]  # Standard horizons for the main predictions page
+
     def predict_all_horizons(
         self,
         current_features: pd.DataFrame,
         current_regime: Optional[int] = None
     ) -> Dict:
         """
-        Make predictions for all available horizons (1d, 7d, 30d)
+        Make predictions for standard display horizons (1d, 7d, 30d)
 
         Returns:
             Dict with keys for each horizon containing ensemble predictions
         """
         results = {}
 
-        for horizon in self.horizons:
-            results[f'{horizon}d'] = self.predict_ensemble(
-                horizon=horizon,
-                current_features=current_features,
-                current_regime=current_regime
-            )
+        for horizon in self.DISPLAY_HORIZONS:
+            if horizon in self.horizons:
+                results[f'{horizon}d'] = self.predict_ensemble(
+                    horizon=horizon,
+                    current_features=current_features,
+                    current_regime=current_regime
+                )
 
         return results
+
+    def predict_custom_horizon(
+        self,
+        horizon: int,
+        current_features: pd.DataFrame,
+        current_regime: Optional[int] = None,
+        weights: Optional[Dict[str, float]] = None
+    ) -> Dict:
+        """
+        Predict for any horizon (1-1095 days).
+        If horizon matches a trained ML horizon, uses all models with exact horizon.
+        For horizons > 365d, only HMM is used (ML models not reliable at that range).
+        Otherwise, Markov/HMM use exact horizon; RF/XGBoost use nearest trained horizon.
+
+        Returns:
+            Dict with 'ensemble', 'individual_models', 'weights', 'model_metadata'
+        """
+        # For horizons > 365 days, only use HMM (ML models not reliable)
+        hmm_only = horizon > 365
+
+        # Check if this is an exact trained horizon (and within ML range)
+        if not hmm_only and horizon in self.horizons:
+            result = self.predict_ensemble(
+                horizon=horizon,
+                current_features=current_features,
+                current_regime=current_regime,
+                weights=weights
+            )
+            # Add metadata showing all models used exact horizon
+            result['model_metadata'] = {
+                name: {'exact_horizon': True, 'used_horizon': horizon}
+                for name in ['markov', 'hmm', 'random_forest', 'xgboost']
+            }
+            return result
+
+        # Custom horizon: Markov/HMM exact, ML nearest (or skipped if hmm_only)
+        nearest_ml_horizon = min(self.horizons, key=lambda h: abs(h - horizon)) if not hmm_only else None
+
+        if weights is None:
+            weights = {
+                'markov': 0.25,
+                'hmm': 0.25,
+                'random_forest': 0.25,
+                'xgboost': 0.25
+            }
+
+        predictions = {}
+        ensemble_probs = np.zeros(self.n_regimes)
+
+        # Markov - exact horizon
+        if 'markov' in self.models and current_regime is not None:
+            try:
+                pred = self.predict_single_model('markov', horizon, current_features, current_regime)
+                predictions['markov'] = pred
+                ensemble_probs += np.array(pred['probabilities']) * weights['markov']
+            except Exception as e:
+                print(f"Warning: Markov prediction failed: {e}")
+
+        # HMM - exact horizon
+        if 'hmm' in self.models:
+            try:
+                pred = self.predict_single_model('hmm', horizon, current_features, current_regime)
+                predictions['hmm'] = pred
+                ensemble_probs += np.array(pred['probabilities']) * weights['hmm']
+            except Exception as e:
+                print(f"Warning: HMM prediction failed: {e}")
+
+        # RF - nearest trained horizon (skip for horizons > 365d)
+        if not hmm_only and 'ml' in self.models and nearest_ml_horizon in self.models['ml']:
+            if 'random_forest' in self.models['ml'][nearest_ml_horizon]:
+                try:
+                    pred = self.predict_single_model('random_forest', nearest_ml_horizon, current_features)
+                    predictions['random_forest'] = pred
+                    ensemble_probs += np.array(pred['probabilities']) * weights['random_forest']
+                except Exception as e:
+                    print(f"Warning: RF prediction failed: {e}")
+
+        # XGBoost - nearest trained horizon (skip for horizons > 365d)
+        if not hmm_only and 'ml' in self.models and nearest_ml_horizon in self.models['ml']:
+            if 'xgboost' in self.models['ml'][nearest_ml_horizon]:
+                try:
+                    pred = self.predict_single_model('xgboost', nearest_ml_horizon, current_features)
+                    predictions['xgboost'] = pred
+                    ensemble_probs += np.array(pred['probabilities']) * weights['xgboost']
+                except Exception as e:
+                    print(f"Warning: XGBoost prediction failed: {e}")
+
+        # Normalize
+        if ensemble_probs.sum() > 0:
+            ensemble_probs = ensemble_probs / ensemble_probs.sum()
+
+        ensemble_prediction = int(np.argmax(ensemble_probs))
+        ensemble_confidence = float(ensemble_probs[ensemble_prediction])
+
+        return {
+            'ensemble': {
+                'predicted_regime': ensemble_prediction,
+                'probabilities': ensemble_probs.tolist(),
+                'confidence': ensemble_confidence
+            },
+            'individual_models': predictions,
+            'weights': weights,
+            'model_metadata': {
+                'markov': {'exact_horizon': True, 'used_horizon': horizon},
+                'hmm': {'exact_horizon': True, 'used_horizon': horizon},
+                **({} if hmm_only else {
+                    'random_forest': {'exact_horizon': False, 'used_horizon': nearest_ml_horizon},
+                    'xgboost': {'exact_horizon': False, 'used_horizon': nearest_ml_horizon},
+                }),
+            }
+        }
 
 
 def load_prediction_engine(symbol: str, models_dir: str = 'models') -> RegimePredictionEngine:

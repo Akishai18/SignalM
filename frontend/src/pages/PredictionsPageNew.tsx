@@ -5,6 +5,7 @@ import { usePredictions, useModelAccuracy, useIndicesPredictionsComparison } fro
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import { FlipCard } from '@/components/ui/flip-card';
 import { EducationCard } from '@/components/dashboard/EducationCard';
+import CustomHorizonPredictor from '@/components/predictions/CustomHorizonPredictor';
 
 const REGIME_NAMES = ['Calm', 'Crisis', 'Elevated Stress', 'Transition'];
 const REGIME_COLORS = {
@@ -407,7 +408,7 @@ const PredictionsPageNew = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {accuracyData.accuracies.map((model, idx) => (
+                    {accuracyData.accuracies.filter(m => [1, 7, 30].includes(m.horizon_days)).map((model, idx) => (
                       <tr key={idx} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                         <td className="py-3 px-4 text-sm font-medium">{model.model_name}</td>
                         <td className="py-3 px-4 text-sm text-muted-foreground">{model.horizon_days}d</td>
@@ -437,6 +438,9 @@ const PredictionsPageNew = () => {
             }
           />
         )}
+
+        {/* Custom Horizon Prediction */}
+        <CustomHorizonPredictor selectedIndex={selectedIndex} />
       </div>
     </DashboardLayout>
   );

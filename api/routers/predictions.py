@@ -62,6 +62,46 @@ class CustomPredictionResponse(BaseModel):
     horizons: Dict[str, HorizonPrediction]
     timestamp: str
 
+class ModelMetadata(BaseModel):
+    exact_horizon: bool
+    used_horizon: int
+
+class CustomHorizonModelPrediction(BaseModel):
+    model_name: str
+    predicted_regime: int
+    predicted_regime_name: str
+    confidence: float
+    probabilities: Dict[str, float]
+    metadata: ModelMetadata
+
+class CustomHorizonPrediction(BaseModel):
+    requested_horizon: int
+    ensemble: ModelPrediction
+    individual_models: List[CustomHorizonModelPrediction]
+    weights: Dict[str, float]
+    model_metadata: Dict[str, ModelMetadata]
+
+class CustomHorizonResponse(BaseModel):
+    symbol: str
+    current_regime: Optional[int] = None
+    current_date: str
+    prediction: CustomHorizonPrediction
+    timestamp: str
+
+class TrajectoryPoint(BaseModel):
+    day: int
+    regime: int
+    regime_name: str
+    confidence: float
+    probabilities: Dict[str, float]
+
+class TrajectoryResponse(BaseModel):
+    symbol: str
+    max_horizon: int
+    current_regime: Optional[int] = None
+    points: List[TrajectoryPoint]
+    timestamp: str
+
 # --- Helper Functions ---
 
 def get_regime_label_map():
@@ -94,33 +134,56 @@ def format_model_prediction(
     )
 
 def load_current_features(symbol: str) -> tuple[pd.DataFrame, Optional[int]]:
-    """Load current features and regime for an index"""
+    """Load current features and regime for an index.
+
+    Combines market-wide PCA features with index-specific features
+    (returns, volatility, momentum, etc.) to match training data.
+    """
     try:
-        # Always use the main regime features file (normalized regime features, not raw price data)
-        # Index-specific files in indices/ folder contain raw market data, not regime features
-        features_path = 'regime_results/regime_features_normalized.csv'
-
-        # Try index-specific regime labels, fallback to SPY
         symbol_lower = symbol.lower()
-        regime_path = f'regime_results/indices/{symbol_lower}_regimes.csv'
-        if not os.path.exists(regime_path):
-            regime_path = 'regime_results/regime_labels_k4.csv'
 
-        # Load features
+        # Market-wide PCA features
+        features_path = 'regime_results/regime_features_normalized.csv'
         features = pd.read_csv(features_path, index_col=0, parse_dates=True)
 
         # Remove timezone if present
         if hasattr(features.index, 'tz') and features.index.tz is not None:
             features.index = features.index.tz_localize(None)
 
-        # Ensure all columns are numeric (drop any string columns like 'symbol')
+        # Ensure all columns are numeric
         features = features.select_dtypes(include=[np.number])
+
+        # Load index-specific features (must match training: load_index_data())
+        index_features_path = f'regime_results/indices/{symbol_lower}_features.csv'
+        if os.path.exists(index_features_path):
+            index_features = pd.read_csv(index_features_path, index_col=0, parse_dates=True)
+            if hasattr(index_features.index, 'tz') and index_features.index.tz is not None:
+                index_features.index = index_features.index.tz_localize(None)
+
+            # Same columns as training
+            index_feature_cols = [
+                'returns', 'log_returns',
+                'vol_21d', 'vol_63d', 'vol_252d',
+                'momentum_21d', 'momentum_63d',
+                'price_to_sma21', 'price_to_sma50', 'price_to_sma200',
+                'sma21_slope', 'sma50_slope',
+                'rsi', 'drawdown'
+            ]
+            available_cols = [c for c in index_feature_cols if c in index_features.columns]
+            index_features = index_features[available_cols]
+            # Prefix with symbol to match training
+            index_features.columns = [f'{symbol_lower}_{col}' for col in index_features.columns]
+            features = features.join(index_features, how='inner')
 
         # Ensure we have enough data for lag features (need at least 22 rows)
         if len(features) < 22:
             raise ValueError(f"Insufficient feature history: {len(features)} rows (need at least 22)")
 
-        # Load regime
+        # Try index-specific regime labels, fallback to SPY
+        regime_path = f'regime_results/indices/{symbol_lower}_regimes.csv'
+        if not os.path.exists(regime_path):
+            regime_path = 'regime_results/regime_labels_k4.csv'
+
         regime_labels = pd.read_csv(regime_path, index_col=0, parse_dates=True).squeeze()
         if hasattr(regime_labels.index, 'tz') and regime_labels.index.tz is not None:
             regime_labels.index = regime_labels.index.tz_localize(None)
@@ -632,3 +695,172 @@ def predictions_health():
             "error": str(e),
             "timestamp": datetime.now().isoformat()
         }
+
+
+# --- Custom Horizon Prediction Endpoint ---
+
+@router.get("/{symbol}/horizon-custom/{days}", response_model=CustomHorizonResponse)
+def get_custom_horizon_prediction(
+    symbol: str = Path(..., description="Index symbol (SPY, QQQ, DIA, IWM)"),
+    days: int = Path(..., ge=1, le=1095, description="Prediction horizon in days (1-1095)")
+):
+    """
+    Generate regime prediction for a custom time horizon.
+    Uses all available models. For non-trained horizons, Markov/HMM use exact horizon
+    while RF/XGBoost use the nearest trained horizon.
+    """
+    symbol = symbol.upper()
+    if symbol not in ['SPY', 'QQQ', 'DIA', 'IWM']:
+        raise HTTPException(status_code=400, detail=f"Invalid symbol: {symbol}")
+
+    try:
+        engine = get_prediction_engine(symbol)
+        features, current_regime = load_current_features(symbol)
+
+        # Use custom horizon prediction
+        result = engine.predict_custom_horizon(
+            horizon=days,
+            current_features=features,
+            current_regime=current_regime
+        )
+
+        regime_map = get_regime_label_map()
+        model_metadata = result.get('model_metadata', {})
+
+        # Format ensemble
+        ensemble = format_model_prediction(
+            'Ensemble',
+            result['ensemble'],
+            regime_map
+        )
+
+        # Format individual models (exclude Markov from display)
+        individual_models = []
+        for model_name, model_pred in result['individual_models'].items():
+            if 'markov' in model_name.lower():
+                continue
+            display_name = model_name.replace('_', ' ').title()
+            meta = model_metadata.get(model_name, {'exact_horizon': True, 'used_horizon': days})
+
+            predicted_regime = model_pred['predicted_regime']
+            probabilities = {
+                regime_map[i]: float(prob)
+                for i, prob in enumerate(model_pred['probabilities'])
+            }
+
+            individual_models.append(CustomHorizonModelPrediction(
+                model_name=display_name,
+                predicted_regime=predicted_regime,
+                predicted_regime_name=regime_map[predicted_regime],
+                confidence=float(model_pred['confidence']),
+                probabilities=probabilities,
+                metadata=ModelMetadata(
+                    exact_horizon=meta['exact_horizon'],
+                    used_horizon=meta['used_horizon']
+                )
+            ))
+
+        # Format model metadata for response
+        formatted_metadata = {
+            name: ModelMetadata(
+                exact_horizon=meta['exact_horizon'],
+                used_horizon=meta['used_horizon']
+            )
+            for name, meta in model_metadata.items()
+        }
+
+        prediction = CustomHorizonPrediction(
+            requested_horizon=days,
+            ensemble=ensemble,
+            individual_models=individual_models,
+            weights=result['weights'],
+            model_metadata=formatted_metadata
+        )
+
+        return CustomHorizonResponse(
+            symbol=symbol,
+            current_regime=current_regime,
+            current_date=features.index[-1].strftime('%Y-%m-%d') if hasattr(features.index[-1], 'strftime') else str(features.index[-1]),
+            prediction=prediction,
+            timestamp=datetime.now().isoformat()
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Custom horizon prediction failed for {symbol} ({days}d): {str(e)}"
+        )
+
+
+@router.get("/{symbol}/trajectory/{days}", response_model=TrajectoryResponse)
+def get_regime_trajectory(
+    symbol: str = Path(..., description="Index symbol (SPY, QQQ, DIA, IWM)"),
+    days: int = Path(..., ge=1, le=1095, description="Max prediction horizon in days (1-1095)")
+):
+    """
+    Generate regime predictions for every sampled day from 1 to max_days.
+    Returns a trajectory of regime predictions for charting transitions over time.
+    """
+    symbol = symbol.upper()
+    if symbol not in ['SPY', 'QQQ', 'DIA', 'IWM']:
+        raise HTTPException(status_code=400, detail=f"Invalid symbol: {symbol}")
+
+    try:
+        engine = get_prediction_engine(symbol)
+        features, current_regime = load_current_features(symbol)
+        regime_map = get_regime_label_map()
+
+        # Build sampled day list
+        sample_days = []
+        for d in range(1, min(days + 1, 31)):
+            sample_days.append(d)
+        for d in range(33, min(days + 1, 91), 3):
+            sample_days.append(d)
+        for d in range(91, min(days + 1, 366), 7):
+            sample_days.append(d)
+        for d in range(378, days + 1, 14):
+            sample_days.append(d)
+        # Always include the final day
+        if days not in sample_days:
+            sample_days.append(days)
+        sample_days.sort()
+
+        points = []
+        for d in sample_days:
+            result = engine.predict_custom_horizon(
+                horizon=d,
+                current_features=features,
+                current_regime=current_regime
+            )
+            ens = result['ensemble']
+            predicted_regime = ens['predicted_regime']
+            probabilities = {
+                regime_map[i]: float(prob)
+                for i, prob in enumerate(ens['probabilities'])
+            }
+
+            points.append(TrajectoryPoint(
+                day=d,
+                regime=predicted_regime,
+                regime_name=regime_map[predicted_regime],
+                confidence=float(ens['confidence']),
+                probabilities=probabilities
+            ))
+
+        return TrajectoryResponse(
+            symbol=symbol,
+            max_horizon=days,
+            current_regime=current_regime,
+            points=points,
+            timestamp=datetime.now().isoformat()
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Trajectory prediction failed for {symbol} ({days}d): {str(e)}"
+        )

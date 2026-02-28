@@ -28,6 +28,8 @@ import api, {
   HorizonPrediction,
   ModelComparisonNew,
   IndicesPredictionsComparison,
+  CustomHorizonResponse,
+  TrajectoryResponse,
 } from '@/lib/api';
 
 // Query keys for cache management
@@ -59,6 +61,8 @@ export const queryKeys = {
   horizonPrediction: (symbol: string, days: number) => ['predictions', symbol, 'horizon', days] as const,
   modelAccuracy: (symbol: string) => ['predictions', symbol, 'accuracy'] as const,
   indicesPredictions: ['predictions', 'indices', 'comparison'] as const,
+  customHorizon: (symbol: string, days: number) => ['predictions', symbol, 'custom-horizon', days] as const,
+  trajectory: (symbol: string, days: number) => ['predictions', symbol, 'trajectory', days] as const,
 };
 
 /**
@@ -443,5 +447,35 @@ export function useIndicesPredictionsComparison(): UseQueryResult<
     queryFn: api.getIndicesPredictionsComparison,
     staleTime: 60 * 1000, // 1 minute
     refetchInterval: 60 * 1000, // Auto-refresh every minute
+  });
+}
+
+/**
+ * Hook for custom horizon predictions (manual trigger)
+ * Call refetch() to trigger the prediction
+ */
+export function useCustomHorizonPrediction(
+  symbol: string,
+  days: number
+): UseQueryResult<CustomHorizonResponse, Error> {
+  return useQuery({
+    queryKey: queryKeys.customHorizon(symbol, days),
+    queryFn: () => api.getCustomHorizonPrediction(symbol, days),
+    enabled: false, // Only fetch when refetch() is called
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+  });
+}
+
+export function useRegimeTrajectory(
+  symbol: string,
+  days: number
+): UseQueryResult<TrajectoryResponse, Error> {
+  return useQuery({
+    queryKey: queryKeys.trajectory(symbol, days),
+    queryFn: () => api.getTrajectory(symbol, days),
+    enabled: false,
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000,
   });
 }

@@ -18,7 +18,7 @@
     "horizon_days": 1,
     "train_accuracy": 0.8595317725752508,
     "test_accuracy": 0.8595317725752508,
-    "mean_confidence": 0.7679138082174972
+    "mean_confidence": 0.7679138082174973
   },
   {
     "model_name": "XGBoost",
@@ -26,6 +26,34 @@
     "train_accuracy": 0.8517279821627648,
     "test_accuracy": 0.8517279821627648,
     "mean_confidence": 0.9365750551223755
+  },
+  {
+    "model_name": "Random Forest",
+    "horizon_days": 3,
+    "train_accuracy": 0.850613154960981,
+    "test_accuracy": 0.850613154960981,
+    "mean_confidence": 0.7839571673802385
+  },
+  {
+    "model_name": "XGBoost",
+    "horizon_days": 3,
+    "train_accuracy": 0.842809364548495,
+    "test_accuracy": 0.842809364548495,
+    "mean_confidence": 0.9276400804519653
+  },
+  {
+    "model_name": "Random Forest",
+    "horizon_days": 5,
+    "train_accuracy": 0.8415178571428571,
+    "test_accuracy": 0.8415178571428571,
+    "mean_confidence": 0.7708613351428026
+  },
+  {
+    "model_name": "XGBoost",
+    "horizon_days": 5,
+    "train_accuracy": 0.8571428571428571,
+    "test_accuracy": 0.8571428571428571,
+    "mean_confidence": 0.9423795342445374
   },
   {
     "model_name": "Random Forest",
@@ -43,6 +71,34 @@
   },
   {
     "model_name": "Random Forest",
+    "horizon_days": 14,
+    "train_accuracy": 0.8612975391498882,
+    "test_accuracy": 0.8612975391498882,
+    "mean_confidence": 0.7835110780829285
+  },
+  {
+    "model_name": "XGBoost",
+    "horizon_days": 14,
+    "train_accuracy": 0.8758389261744967,
+    "test_accuracy": 0.8758389261744967,
+    "mean_confidence": 0.9321303367614746
+  },
+  {
+    "model_name": "Random Forest",
+    "horizon_days": 21,
+    "train_accuracy": 0.867564534231201,
+    "test_accuracy": 0.867564534231201,
+    "mean_confidence": 0.7820803544270057
+  },
+  {
+    "model_name": "XGBoost",
+    "horizon_days": 21,
+    "train_accuracy": 0.7912457912457912,
+    "test_accuracy": 0.7912457912457912,
+    "mean_confidence": 0.925603985786438
+  },
+  {
+    "model_name": "Random Forest",
     "horizon_days": 30,
     "train_accuracy": 0.8166479190101237,
     "test_accuracy": 0.8166479190101237,
@@ -54,5 +110,61 @@
     "train_accuracy": 0.7671541057367829,
     "test_accuracy": 0.7671541057367829,
     "mean_confidence": 0.9352421760559082
+  },
+  {
+    "model_name": "Random Forest",
+    "horizon_days": 60,
+    "train_accuracy": 0.8090909090909091,
+    "test_accuracy": 0.8090909090909091,
+    "mean_confidence": 0.8111620767768758
+  },
+  {
+    "model_name": "XGBoost",
+    "horizon_days": 60,
+    "train_accuracy": 0.803409090909091,
+    "test_accuracy": 0.803409090909091,
+    "mean_confidence": 0.9388536214828491
+  },
+  {
+    "model_name": "Random Forest",
+    "horizon_days": 90,
+    "train_accuracy": 0.7347876004592423,
+    "test_accuracy": 0.7347876004592423,
+    "mean_confidence": 0.7617347660325793
+  },
+  {
+    "model_name": "XGBoost",
+    "horizon_days": 90,
+    "train_accuracy": 0.7336394948335246,
+    "test_accuracy": 0.7336394948335246,
+    "mean_confidence": 0.9192374348640442
+  },
+  {
+    "model_name": "Random Forest",
+    "horizon_days": 180,
+    "train_accuracy": 0.5947867298578199,
+    "test_accuracy": 0.5947867298578199,
+    "mean_confidence": 0.608279804585691
+  },
+  {
+    "model_name": "XGBoost",
+    "horizon_days": 180,
+    "train_accuracy": 0.6540284360189573,
+    "test_accuracy": 0.6540284360189573,
+    "mean_confidence": 0.9275849461555481
+  },
+  {
+    "model_name": "Random Forest",
+    "horizon_days": 365,
+    "train_accuracy": 0.5774111675126904,
+    "test_accuracy": 0.5774111675126904,
+    "mean_confidence": 0.7784617176683164
+  },
+  {
+    "model_name": "XGBoost",
+    "horizon_days": 365,
+    "train_accuracy": 0.567258883248731,
+    "test_accuracy": 0.567258883248731,
+    "mean_confidence": 0.9914465546607971
   }
 ]

@@ -22,7 +22,7 @@ except ImportError:
     print("Warning: xgboost not installed. Install with: pip install xgboost")
 
 
-DEFAULT_HORIZONS = [1, 7, 30]
+DEFAULT_HORIZONS = [1, 3, 5, 7, 14, 21, 30, 60, 90, 180, 365]
 DEFAULT_LAGS = [1, 5, 21]  # 1-day, 1-week, 1-month lags
 
 
