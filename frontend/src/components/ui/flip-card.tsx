@@ -25,10 +25,10 @@ export function FlipCard({ front, back, className }: FlipCardProps) {
         {/* Info button overlay */}
         <DialogTrigger asChild>
           <button
-            className="absolute top-3 right-3 z-10 p-1.5 rounded-full bg-primary/10 hover:bg-primary/20 text-primary transition-all hover:scale-110 shadow-lg"
+            className="absolute bottom-3 right-3 z-10 p-1.5 rounded-full bg-primary/10 hover:bg-primary/20 text-primary transition-all hover:scale-110 shadow-lg opacity-60 hover:opacity-100"
             title="Learn more"
           >
-            <Info className="h-4 w-4" />
+            <Info className="h-3.5 w-3.5" />
           </button>
         </DialogTrigger>
       </div>

@@ -101,6 +101,60 @@ export interface IndicesPredictionsComparison {
   timestamp: string;
 }
 
+// Custom Horizon Prediction types
+export interface CustomHorizonModelMetadata {
+  exact_horizon: boolean;
+  used_horizon: number;
+}
+
+export interface CustomHorizonModelPrediction {
+  model_name: string;
+  predicted_regime: number;
+  predicted_regime_name: string;
+  confidence: number;
+  probabilities: Record<string, number>;
+  metadata: CustomHorizonModelMetadata;
+}
+
+export interface CustomHorizonPrediction {
+  requested_horizon: number;
+  ensemble: {
+    model_name: string;
+    predicted_regime: number;
+    predicted_regime_name: string;
+    confidence: number;
+    probabilities: Record<string, number>;
+  };
+  individual_models: CustomHorizonModelPrediction[];
+  weights: Record<string, number>;
+  model_metadata: Record<string, CustomHorizonModelMetadata>;
+}
+
+export interface CustomHorizonResponse {
+  symbol: string;
+  current_regime: number | null;
+  current_date: string;
+  prediction: CustomHorizonPrediction;
+  timestamp: string;
+}
+
+// Trajectory types
+export interface TrajectoryPoint {
+  day: number;
+  regime: number;
+  regime_name: string;
+  confidence: number;
+  probabilities: Record<string, number>;
+}
+
+export interface TrajectoryResponse {
+  symbol: string;
+  max_horizon: number;
+  current_regime: number | null;
+  points: TrajectoryPoint[];
+  timestamp: string;
+}
+
 export interface ModelComparison {
   models: Array<{
     model_name: string;
@@ -362,6 +416,16 @@ export const api = {
    */
   async getHorizonPrediction(symbol: string, days: number): Promise<HorizonPrediction> {
     const response = await fetch(`${API_BASE_URL}/api/predictions/${symbol}/horizon/${days}`);
+    return handleResponse(response);
+  },
+
+  async getCustomHorizonPrediction(symbol: string, days: number): Promise<CustomHorizonResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/predictions/${symbol}/horizon-custom/${days}`);
+    return handleResponse(response);
+  },
+
+  async getTrajectory(symbol: string, days: number): Promise<TrajectoryResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/predictions/${symbol}/trajectory/${days}`);
     return handleResponse(response);
   },
 
