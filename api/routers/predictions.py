@@ -15,6 +15,9 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'src'))
 
 from regime.inference import load_prediction_engine, RegimePredictionEngine
+from regime.transitions import compute_transition_matrix, compute_regime_durations, find_common_transition_paths
+from fastapi.responses import StreamingResponse
+import io
 
 router = APIRouter(prefix="/api/predictions", tags=["predictions"])
 
@@ -864,3 +867,414 @@ def get_regime_trajectory(
             status_code=500,
             detail=f"Trajectory prediction failed for {symbol} ({days}d): {str(e)}"
         )
+
+
+# ============================================================================
+# Transition Matrix, Backtest, What-If, Export Endpoints
+# ============================================================================
+
+@router.get("/{symbol}/transitions")
+def get_transitions(symbol: str):
+    """Compute transition matrix, durations, and common paths for an index."""
+    try:
+        symbol = symbol.upper()
+        regime_map = get_regime_label_map()
+
+        # Load regime labels
+        regime_path = f'regime_results/indices/{symbol.lower()}_regimes.csv'
+        if not os.path.exists(regime_path):
+            regime_path = 'regime_results/regime_labels_k4.csv'
+        regime_labels = pd.read_csv(regime_path, index_col=0, parse_dates=True).squeeze()
+        regime_labels = regime_labels.dropna().astype(int)
+
+        # Compute transition matrix and counts
+        trans_matrix, trans_counts = compute_transition_matrix(regime_labels)
+
+        # Convert to named dict format: { "Calm": { "Calm": 0.95, "Crisis": 0.01, ... }, ... }
+        matrix_dict = {}
+        counts_dict = {}
+        for from_id in trans_matrix.index:
+            from_name = regime_map[int(from_id)]
+            matrix_dict[from_name] = {}
+            counts_dict[from_name] = {}
+            for to_id in trans_matrix.columns:
+                to_name = regime_map[int(to_id)]
+                matrix_dict[from_name][to_name] = float(trans_matrix.loc[from_id, to_id])
+                counts_dict[from_name][to_name] = int(trans_counts.loc[from_id, to_id])
+
+        # Compute durations
+        durations_raw = compute_regime_durations(regime_labels)
+        durations = {}
+        for regime_id, stats in durations_raw.items():
+            name = regime_map[int(regime_id)]
+            durations[name] = {
+                'mean_days': float(stats['mean_days']),
+                'median_days': float(stats['median_days']),
+                'min_days': int(stats['min_days']),
+                'max_days': int(stats['max_days']),
+                'std_days': float(stats['std_days']) if not pd.isna(stats['std_days']) else 0.0,
+                'total_runs': int(stats['total_runs']),
+                'total_days': int(stats['total_days']),
+            }
+
+        # Common paths
+        raw_paths = find_common_transition_paths(regime_labels, max_path_length=3)
+        common_paths = [
+            {
+                'path': [regime_map[int(r)] for r in path],
+                'count': count,
+            }
+            for path, count in raw_paths[:10]
+        ]
+
+        return {
+            'symbol': symbol,
+            'matrix': matrix_dict,
+            'counts': counts_dict,
+            'durations': durations,
+            'common_paths': common_paths,
+            'timestamp': datetime.now().isoformat(),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Transitions failed for {symbol}: {str(e)}")
+
+
+@router.get("/{symbol}/backtest")
+def get_backtest(symbol: str, days: int = Query(252, ge=30, le=1000)):
+    """Rolling backtest accuracy for ensemble predictions across horizons."""
+    try:
+        symbol = symbol.upper()
+        engine = get_prediction_engine(symbol)
+        features, current_regime = load_current_features(symbol)
+        regime_map = get_regime_label_map()
+
+        # Load regime labels for ground truth
+        regime_path = f'regime_results/indices/{symbol.lower()}_regimes.csv'
+        if not os.path.exists(regime_path):
+            regime_path = 'regime_results/regime_labels_k4.csv'
+        regime_labels = pd.read_csv(regime_path, index_col=0, parse_dates=True).squeeze()
+        if hasattr(regime_labels.index, 'tz') and regime_labels.index.tz is not None:
+            regime_labels.index = regime_labels.index.tz_localize(None)
+
+        # Align features and labels
+        common_dates = features.index.intersection(regime_labels.index)
+        features = features.loc[common_dates]
+        regime_labels = regime_labels.loc[common_dates]
+
+        # Use last `days` dates
+        n = min(days, len(common_dates))
+        test_dates = common_dates[-n:]
+
+        # For each date, predict and compare to actual future regime
+        horizons = [1, 7, 30]
+        results = []
+        rolling_window = 30
+
+        for idx, date in enumerate(test_dates):
+            point = {'date': date.strftime('%Y-%m-%d')}
+
+            for h in horizons:
+                future_idx = common_dates.get_loc(date) + h
+                if future_idx >= len(common_dates):
+                    point[f'rolling_accuracy_{h}d'] = None
+                    point[f'confidence_{h}d'] = None
+                    continue
+
+                # Ground truth
+                actual = int(regime_labels.iloc[future_idx])
+
+                # Predict
+                try:
+                    current_features_at_date = features.loc[:date]
+                    current_regime_at_date = int(regime_labels.loc[date])
+                    result = engine.predict_custom_horizon(
+                        horizon=h,
+                        current_features=current_features_at_date,
+                        current_regime=current_regime_at_date,
+                    )
+                    predicted = result['ensemble']['predicted_regime']
+                    conf = float(result['ensemble']['confidence'])
+
+                    point[f'correct_{h}d'] = 1 if predicted == actual else 0
+                    point[f'confidence_{h}d'] = conf
+                except Exception:
+                    point[f'correct_{h}d'] = None
+                    point[f'confidence_{h}d'] = None
+
+            results.append(point)
+
+        # Compute rolling accuracy
+        points = []
+        for i, r in enumerate(results):
+            pt = {'date': r['date']}
+            for h in horizons:
+                # Rolling window accuracy
+                window_start = max(0, i - rolling_window + 1)
+                window_results = [results[j].get(f'correct_{h}d') for j in range(window_start, i + 1)]
+                valid = [v for v in window_results if v is not None]
+                pt[f'rolling_accuracy_{h}d'] = sum(valid) / len(valid) if valid else None
+                pt[f'confidence_{h}d'] = r.get(f'confidence_{h}d')
+            points.append(pt)
+
+        # Summary stats
+        summary = {}
+        for h in horizons:
+            all_correct = [r.get(f'correct_{h}d') for r in results if r.get(f'correct_{h}d') is not None]
+            summary[f'accuracy_{h}d'] = sum(all_correct) / len(all_correct) if all_correct else 0
+
+        return {
+            'symbol': symbol,
+            'points': points,
+            'summary': summary,
+            'timestamp': datetime.now().isoformat(),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Backtest failed for {symbol}: {str(e)}")
+
+
+class WhatIfModelPrediction(BaseModel):
+    model_name: str
+    predicted_regime: int
+    predicted_regime_name: str
+    confidence: float
+    probabilities: Dict[str, float]
+
+
+def _hmm_predict_from_features(engine, features_df: pd.DataFrame, regime_map: Dict) -> WhatIfModelPrediction:
+    """HMM prediction using emission probabilities (score_samples) rather than just transition matrix."""
+    hmm_data = engine.models['hmm']
+    hmm_model = hmm_data['hmm_model']
+    model = hmm_model['model']
+    state_mapping = hmm_model.get('state_mapping', {i: i for i in range(4)})
+    n_regimes = hmm_model['n_regimes']
+
+    X = features_df.dropna().values[-10:]
+    _, posteriors = model.score_samples(X)
+    state_probs = posteriors[-1]
+    next_probs = state_probs @ model.transmat_
+
+    km_probs = np.zeros(n_regimes)
+    for hmm_state, prob in enumerate(next_probs):
+        km_regime = state_mapping.get(hmm_state, hmm_state)
+        km_probs[km_regime] += prob
+    km_probs = km_probs / km_probs.sum()
+
+    predicted = int(np.argmax(km_probs))
+    return WhatIfModelPrediction(
+        model_name='HMM',
+        predicted_regime=predicted,
+        predicted_regime_name=regime_map[predicted],
+        confidence=float(km_probs[predicted]),
+        probabilities={regime_map[i]: float(p) for i, p in enumerate(km_probs)}
+    )
+
+
+def _apply_feature_adjustments(features: pd.DataFrame, adjustments: Dict[str, float]) -> pd.DataFrame:
+    """Apply scenario adjustments to the last 10 rows of features.
+
+    Slider values are percentages (e.g. vol_delta=150 means +150% vol).
+    We convert to standard-deviation shifts: pct / 100 gives the number of
+    std-devs to shift by.  Only the last 10 rows (which HMM and tree models
+    actually look at) are modified so that historical context stays clean.
+    """
+    adjusted = features.copy()
+    n_adjust = 10  # rows to modify (matches HMM window)
+
+    vol_delta = adjustments.get('vol_delta', 0) / 100.0
+    corr_delta = adjustments.get('corr_delta', 0) / 100.0
+    returns_delta = adjustments.get('returns_delta', 0) / 100.0
+    drawdown_delta = adjustments.get('drawdown_delta', 0) / 100.0
+    momentum_delta = adjustments.get('momentum_delta', 0) / 100.0
+
+    for col in adjusted.columns:
+        c = col.lower()
+        col_std = adjusted[col].std()
+        if col_std == 0 or pd.isna(col_std):
+            continue
+
+        if 'vol' in c:
+            shift = vol_delta * col_std
+        elif 'corr' in c or 'pc1' in c or 'cum_var' in c:
+            shift = corr_delta * col_std
+        elif 'return' in c:
+            shift = returns_delta * col_std
+        elif 'drawdown' in c:
+            shift = drawdown_delta * col_std
+        elif 'momentum' in c or 'sma' in c or 'rsi' in c:
+            shift = momentum_delta * col_std
+        elif 'eff' in c or 'dim' in c:
+            shift = -corr_delta * col_std
+        else:
+            continue
+
+        adjusted.iloc[-n_adjust:, adjusted.columns.get_loc(col)] += shift
+
+    return adjusted
+
+
+@router.get("/{symbol}/what-if")
+def get_what_if(
+    symbol: str,
+    vol_delta: float = Query(0),
+    corr_delta: float = Query(0),
+    returns_delta: float = Query(0),
+    drawdown_delta: float = Query(0),
+    momentum_delta: float = Query(0),
+):
+    """What-if scenario analysis using HMM, RF, and XGBoost."""
+    try:
+        symbol = symbol.upper()
+        engine = get_prediction_engine(symbol)
+        features, current_regime = load_current_features(symbol)
+        regime_map = get_regime_label_map()
+
+        adjustments = {
+            'vol_delta': vol_delta,
+            'corr_delta': corr_delta,
+            'returns_delta': returns_delta,
+            'drawdown_delta': drawdown_delta,
+            'momentum_delta': momentum_delta,
+        }
+
+        adjusted_features = _apply_feature_adjustments(features, adjustments)
+
+        # Models to use: HMM (emission-based), RF, XGBoost
+        display_names = {'random_forest': 'Random Forest', 'xgboost': 'XGBoost'}
+
+        baseline_models = []
+        scenario_models = []
+
+        # HMM baseline & scenario
+        if 'hmm' in engine.models:
+            try:
+                hmm_baseline = _hmm_predict_from_features(engine, features, regime_map)
+                hmm_scenario = _hmm_predict_from_features(engine, adjusted_features, regime_map)
+                baseline_models.append(hmm_baseline)
+                scenario_models.append(hmm_scenario)
+            except Exception:
+                pass
+
+        # RF & XGBoost
+        for model_name in ['random_forest', 'xgboost']:
+            if model_name not in engine.models:
+                continue
+            try:
+                base_pred = engine.predict_single_model(
+                    model_name=model_name, horizon=1,
+                    current_features=features, current_regime=current_regime
+                )
+                scen_pred = engine.predict_single_model(
+                    model_name=model_name, horizon=1,
+                    current_features=adjusted_features, current_regime=current_regime
+                )
+                for pred, dest in [(base_pred, baseline_models), (scen_pred, scenario_models)]:
+                    predicted = pred['predicted_regime']
+                    probs = {regime_map[i]: float(p) for i, p in enumerate(pred['probabilities'])}
+                    dest.append(WhatIfModelPrediction(
+                        model_name=display_names.get(model_name, model_name),
+                        predicted_regime=predicted,
+                        predicted_regime_name=regime_map[predicted],
+                        confidence=float(pred['confidence']),
+                        probabilities=probs,
+                    ))
+            except Exception:
+                continue
+
+        # Ensemble: equal-weight average
+        def make_ensemble(models: list) -> WhatIfModelPrediction:
+            if not models:
+                return WhatIfModelPrediction(
+                    model_name='Ensemble', predicted_regime=0,
+                    predicted_regime_name=regime_map[0], confidence=0.0,
+                    probabilities={regime_map[i]: 0.25 for i in range(4)}
+                )
+            avg_probs = {}
+            for name in regime_map.values():
+                avg_probs[name] = np.mean([m.probabilities.get(name, 0) for m in models])
+            total = sum(avg_probs.values())
+            if total > 0:
+                avg_probs = {k: v / total for k, v in avg_probs.items()}
+            best = max(avg_probs, key=avg_probs.get)
+            best_id = {v: k for k, v in regime_map.items()}[best]
+            return WhatIfModelPrediction(
+                model_name='Ensemble',
+                predicted_regime=best_id,
+                predicted_regime_name=best,
+                confidence=float(avg_probs[best]),
+                probabilities=avg_probs,
+            )
+
+        return {
+            'symbol': symbol,
+            'baseline': make_ensemble(baseline_models),
+            'scenario': make_ensemble(scenario_models),
+            'baseline_models': baseline_models,
+            'scenario_models': scenario_models,
+            'adjustments': adjustments,
+            'timestamp': datetime.now().isoformat(),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"What-if failed for {symbol}: {str(e)}")
+
+
+@router.get("/{symbol}/export")
+def export_predictions(symbol: str):
+    """Export predictions as CSV download."""
+    try:
+        symbol = symbol.upper()
+        engine = get_prediction_engine(symbol)
+        features, current_regime = load_current_features(symbol)
+        regime_map = get_regime_label_map()
+
+        rows = []
+        for horizon in [1, 7, 30]:
+            try:
+                result = engine.predict_custom_horizon(
+                    horizon=horizon,
+                    current_features=features,
+                    current_regime=current_regime,
+                )
+                ens = result['ensemble']
+                row = {
+                    'symbol': symbol,
+                    'horizon_days': horizon,
+                    'predicted_regime': regime_map[ens['predicted_regime']],
+                    'confidence': round(ens['confidence'], 4),
+                }
+                for i, prob in enumerate(ens['probabilities']):
+                    row[f'prob_{regime_map[i]}'] = round(float(prob), 4)
+
+                # Individual models
+                for model_result in result.get('individual_models', []):
+                    mname = model_result['model_name']
+                    row[f'{mname}_prediction'] = regime_map[model_result['predicted_regime']]
+                    row[f'{mname}_confidence'] = round(model_result['confidence'], 4)
+
+                rows.append(row)
+            except Exception:
+                continue
+
+        df = pd.DataFrame(rows)
+        buf = io.StringIO()
+        df.to_csv(buf, index=False)
+        buf.seek(0)
+
+        return StreamingResponse(
+            io.BytesIO(buf.getvalue().encode()),
+            media_type='text/csv',
+            headers={'Content-Disposition': f'attachment; filename=signalm_{symbol}_predictions.csv'}
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Export failed for {symbol}: {str(e)}")

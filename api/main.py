@@ -30,6 +30,13 @@ try:
 except Exception as e:
     print(f"⚠ Failed to load predictions router: {e}")
 
+try:
+    from api.routers.correlations import router as correlations_router
+    app.include_router(correlations_router)
+    print("✓ Correlations router loaded successfully")
+except Exception as e:
+    print(f"⚠ Failed to load correlations router: {e}")
+
 # CORS configuration for frontend
 app.add_middleware(
     CORSMiddleware,
@@ -477,25 +484,6 @@ def get_feature_importance(model: str = "random_forest", top_n: int = 10):
         raise HTTPException(status_code=400, detail=f"Unknown model: {model}")
 
     return importances[:top_n]
-
-@app.get("/api/correlations/matrix")
-def get_correlation_matrix():
-    """Get correlation matrix for sector/factor analysis"""
-    # Mock correlation matrix (will replace with real sector data later)
-    sectors = ["Technology", "Healthcare", "Financials", "Energy", "Consumer", "Industrials"]
-
-    # Generate symmetric correlation matrix
-    np.random.seed(42)
-    n = len(sectors)
-    corr_matrix = np.random.rand(n, n) * 0.6 + 0.2  # Correlations between 0.2 and 0.8
-    corr_matrix = (corr_matrix + corr_matrix.T) / 2  # Make symmetric
-    np.fill_diagonal(corr_matrix, 1.0)  # Diagonal = 1
-
-    return {
-        "sectors": sectors,
-        "matrix": corr_matrix.tolist(),
-        "timestamp": datetime.now().isoformat()
-    }
 
 @app.get("/api/health")
 def health_check():
