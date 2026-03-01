@@ -7,6 +7,16 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 import os
+import json
+
+
+def _load_precomputed(filename: str):
+    """Try to load a precomputed JSON file. Returns dict or None."""
+    path = os.path.join('precomputed', f'{filename}.json')
+    if os.path.exists(path):
+        with open(path, 'r') as f:
+            return json.load(f)
+    return None
 
 router = APIRouter(prefix="/api/correlations", tags=["correlations"])
 
@@ -58,6 +68,11 @@ def get_sector_matrix(
     method: str = Query('pearson', pattern='^(pearson|spearman|kendall)$'),
 ):
     """11x11 sector correlation matrix from real ETF data."""
+    # Try precomputed first
+    cached = _load_precomputed(f'sector_matrix_{window}d_{method}')
+    if cached:
+        return cached
+
     prices = _load_sector_prices()
 
     # Use last `window` trading days of returns
@@ -97,6 +112,10 @@ def get_sector_matrix(
 @router.get("/rolling")
 def get_rolling_correlation():
     """Rolling average pairwise correlation across sector ETFs for 3 windows."""
+    cached = _load_precomputed('rolling_correlation')
+    if cached:
+        return cached
+
     prices = _load_sector_prices()
     returns = np.log(prices).diff().iloc[1:]
 
@@ -135,6 +154,10 @@ def get_rolling_correlation():
 @router.get("/regime-correlation")
 def get_regime_correlation():
     """Avg correlation time series colored by regime."""
+    cached = _load_precomputed('regime_correlation')
+    if cached:
+        return cached
+
     prices = _load_sector_prices()
     returns = np.log(prices).diff().iloc[1:]
     regimes = _load_regime_labels()
@@ -174,6 +197,10 @@ def get_regime_correlation():
 @router.get("/pca-structure")
 def get_pca_structure():
     """Rolling PCA metrics — PC1 variance, cumulative variance, effective dimension."""
+    cached = _load_precomputed('pca_structure')
+    if cached:
+        return cached
+
     path = "pca_data/rolling_pca_metrics.csv"
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="PCA metrics not found")
@@ -202,9 +229,15 @@ def get_sector_pair_detail(
     sector2: str = Query('XLE'),
 ):
     """Rolling 63-day correlation between two specific sectors."""
-    prices = _load_sector_prices()
     s1 = sector1.upper()
     s2 = sector2.upper()
+
+    # Try precomputed (try both orderings)
+    cached = _load_precomputed(f'sector_pair_{s1}_{s2}') or _load_precomputed(f'sector_pair_{s2}_{s1}')
+    if cached:
+        return cached
+
+    prices = _load_sector_prices()
 
     if s1 not in prices.columns or s2 not in prices.columns:
         raise HTTPException(status_code=404, detail=f"Sector {s1} or {s2} not found")
