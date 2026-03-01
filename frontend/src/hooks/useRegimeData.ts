@@ -30,6 +30,9 @@ import api, {
   IndicesPredictionsComparison,
   CustomHorizonResponse,
   TrajectoryResponse,
+  TransitionMatrixResponse,
+  BacktestResponse,
+  WhatIfResponse,
 } from '@/lib/api';
 
 // Query keys for cache management
@@ -63,6 +66,9 @@ export const queryKeys = {
   indicesPredictions: ['predictions', 'indices', 'comparison'] as const,
   customHorizon: (symbol: string, days: number) => ['predictions', symbol, 'custom-horizon', days] as const,
   trajectory: (symbol: string, days: number) => ['predictions', symbol, 'trajectory', days] as const,
+  transitions: (symbol: string) => ['predictions', symbol, 'transitions'] as const,
+  backtest: (symbol: string) => ['predictions', symbol, 'backtest'] as const,
+  whatIf: (symbol: string, params: string) => ['predictions', symbol, 'what-if', params] as const,
 };
 
 /**
@@ -462,6 +468,39 @@ export function useCustomHorizonPrediction(
     queryKey: queryKeys.customHorizon(symbol, days),
     queryFn: () => api.getCustomHorizonPrediction(symbol, days),
     enabled: false, // Only fetch when refetch() is called
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+  });
+}
+
+export function useTransitionMatrix(
+  symbol: string
+): UseQueryResult<TransitionMatrixResponse, Error> {
+  return useQuery({
+    queryKey: queryKeys.transitions(symbol),
+    queryFn: () => api.getTransitions(symbol),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useBacktest(
+  symbol: string
+): UseQueryResult<BacktestResponse, Error> {
+  return useQuery({
+    queryKey: queryKeys.backtest(symbol),
+    queryFn: () => api.getBacktest(symbol),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useWhatIfPrediction(
+  symbol: string,
+  params: { vol_delta: number; corr_delta: number; returns_delta: number; drawdown_delta: number; momentum_delta: number }
+): UseQueryResult<WhatIfResponse, Error> {
+  return useQuery({
+    queryKey: ['predictions', symbol, 'what-if', JSON.stringify(params)] as const,
+    queryFn: () => api.getWhatIf(symbol, params),
+    enabled: false,
     staleTime: 60 * 1000,
     gcTime: 5 * 60 * 1000,
   });

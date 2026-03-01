@@ -41,7 +41,7 @@ export function MetricCard({
   const cardContent = (
     <div
       className={cn(
-        "group relative overflow-hidden rounded-xl p-5 transition-all duration-300 cursor-pointer",
+        "group relative overflow-hidden rounded-xl p-5 transition-all duration-300 cursor-pointer h-full",
         "border border-border bg-card hover-lift hover-glow",
         variant === "neon" && "neon-border hover:glow-cyan",
         variant === "warning" && "border-neon-yellow/30 hover:shadow-neon-yellow/10",
