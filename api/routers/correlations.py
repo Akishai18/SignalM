@@ -10,9 +10,12 @@ import os
 import json
 
 
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
 def _load_precomputed(filename: str):
     """Try to load a precomputed JSON file. Returns dict or None."""
-    path = os.path.join('precomputed', f'{filename}.json')
+    path = os.path.join(_PROJECT_ROOT, 'precomputed', f'{filename}.json')
     if os.path.exists(path):
         with open(path, 'r') as f:
             return json.load(f)
