@@ -1185,17 +1185,18 @@ def get_what_if(
             except Exception:
                 pass
 
-        # RF & XGBoost
+        # RF & XGBoost (stored under engine.models['ml'][horizon])
+        ml_models = engine.models.get('ml', {}).get(1, {})
         for model_name in ['random_forest', 'xgboost']:
-            if model_name not in engine.models:
+            if model_name not in ml_models:
                 continue
             try:
                 base_pred = engine.predict_single_model(
-                    model_name=model_name, horizon=1,
+                    model_type=model_name, horizon=1,
                     current_features=features, current_regime=current_regime
                 )
                 scen_pred = engine.predict_single_model(
-                    model_name=model_name, horizon=1,
+                    model_type=model_name, horizon=1,
                     current_features=adjusted_features, current_regime=current_regime
                 )
                 for pred, dest in [(base_pred, baseline_models), (scen_pred, scenario_models)]:
