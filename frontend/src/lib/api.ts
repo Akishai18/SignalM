@@ -155,6 +155,63 @@ export interface TrajectoryResponse {
   timestamp: string;
 }
 
+// Transition Matrix types
+export interface DurationStats {
+  mean_days: number;
+  median_days: number;
+  min_days: number;
+  max_days: number;
+  std_days: number;
+  total_runs: number;
+  total_days: number;
+}
+
+export interface TransitionMatrixResponse {
+  symbol: string;
+  matrix: Record<string, Record<string, number>>;
+  counts: Record<string, Record<string, number>>;
+  durations: Record<string, DurationStats>;
+  common_paths: Array<{ path: string[]; count: number }>;
+  timestamp: string;
+}
+
+// Backtest types
+export interface BacktestPoint {
+  date: string;
+  rolling_accuracy_1d: number | null;
+  rolling_accuracy_7d: number | null;
+  rolling_accuracy_30d: number | null;
+  confidence_1d: number | null;
+  confidence_7d: number | null;
+  confidence_30d: number | null;
+}
+
+export interface BacktestResponse {
+  symbol: string;
+  points: BacktestPoint[];
+  summary: Record<string, number>;
+  timestamp: string;
+}
+
+// What-If types
+export interface WhatIfModelPrediction {
+  model_name: string;
+  predicted_regime: number;
+  predicted_regime_name: string;
+  confidence: number;
+  probabilities: Record<string, number>;
+}
+
+export interface WhatIfResponse {
+  symbol: string;
+  baseline: WhatIfModelPrediction;
+  scenario: WhatIfModelPrediction;
+  baseline_models: WhatIfModelPrediction[];
+  scenario_models: WhatIfModelPrediction[];
+  adjustments: Record<string, number>;
+  timestamp: string;
+}
+
 export interface ModelComparison {
   models: Array<{
     model_name: string;
@@ -427,6 +484,28 @@ export const api = {
   async getTrajectory(symbol: string, days: number): Promise<TrajectoryResponse> {
     const response = await fetch(`${API_BASE_URL}/api/predictions/${symbol}/trajectory/${days}`);
     return handleResponse(response);
+  },
+
+  async getTransitions(symbol: string): Promise<TransitionMatrixResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/predictions/${symbol}/transitions`);
+    return handleResponse(response);
+  },
+
+  async getBacktest(symbol: string, days: number = 252): Promise<BacktestResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/predictions/${symbol}/backtest?days=${days}`);
+    return handleResponse(response);
+  },
+
+  async getWhatIf(symbol: string, params: { vol_delta: number; corr_delta: number; returns_delta: number; drawdown_delta: number; momentum_delta: number }): Promise<WhatIfResponse> {
+    const searchParams = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).map(([k, v]) => [k, v.toString()]))
+    );
+    const response = await fetch(`${API_BASE_URL}/api/predictions/${symbol}/what-if?${searchParams}`);
+    return handleResponse(response);
+  },
+
+  getExportUrl(symbol: string): string {
+    return `${API_BASE_URL}/api/predictions/${symbol}/export`;
   },
 
   /**

@@ -6,6 +6,12 @@ import { MetricCard } from '@/components/dashboard/MetricCard';
 import { FlipCard } from '@/components/ui/flip-card';
 import { EducationCard } from '@/components/dashboard/EducationCard';
 import CustomHorizonPredictor from '@/components/predictions/CustomHorizonPredictor';
+import TransitionMatrixHeatmap from '@/components/predictions/TransitionMatrixHeatmap';
+import RegimeDurationStats from '@/components/predictions/RegimeDurationStats';
+import BacktestChart from '@/components/predictions/BacktestChart';
+import ConfidenceSparklines from '@/components/predictions/ConfidenceSparklines';
+import WhatIfScenario from '@/components/predictions/WhatIfScenario';
+import ExportButton from '@/components/predictions/ExportButton';
 
 const REGIME_NAMES = ['Calm', 'Crisis', 'Elevated Stress', 'Transition'];
 const REGIME_COLORS = {
@@ -93,31 +99,35 @@ const PredictionsPageNew = () => {
 
   return (
     <DashboardLayout>
-      {/* Header */}
+      {/* Sticky Header with Index Selector */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-30">
-        <div className="px-6 py-4">
+        <div className="px-6 py-3">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold tracking-tight">
                 <span className="text-gradient">SignalM</span> Predictions
               </h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                ML-powered regime forecasting with 3 models: HMM, Random Forest, XGBoost
+              <p className="text-sm text-muted-foreground mt-0.5">
+                ML-powered regime forecasting with 3 models
               </p>
             </div>
             <div className="flex items-center gap-2">
-              {divergenceDetected && (
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-500/10 text-orange-500 border border-orange-500/20">
-                  <AlertTriangle className="h-4 w-4" />
-                  <span className="text-sm font-medium">Divergence Detected</span>
-                </div>
-              )}
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-neon-cyan/10 text-neon-cyan">
-                <Zap className="h-4 w-4" />
-                <span className="text-sm font-medium">
-                  {pred1d?.individual_models.filter(m => !m.model_name.toLowerCase().includes('markov')).length || 0} Models Active
-                </span>
-              </div>
+              {INDICES.map(({ symbol, name, color }) => (
+                <button
+                  key={symbol}
+                  onClick={() => setSelectedIndex(symbol)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    selectedIndex === symbol
+                      ? `${color} text-white shadow-md`
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  }`}
+                >
+                  {symbol}
+                  <span className="text-xs ml-1.5 opacity-70 hidden lg:inline">{name}</span>
+                </button>
+              ))}
+              <div className="w-px h-6 bg-border mx-1" />
+              <ExportButton selectedIndex={selectedIndex} />
             </div>
           </div>
         </div>
@@ -125,22 +135,20 @@ const PredictionsPageNew = () => {
 
       {/* Main content */}
       <div className="p-6 space-y-6">
-        {/* Index Selector */}
-        <div className="flex gap-2">
-          {INDICES.map(({ symbol, name, color }) => (
-            <button
-              key={symbol}
-              onClick={() => setSelectedIndex(symbol)}
-              className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                selectedIndex === symbol
-                  ? `${color} text-white`
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              }`}
-            >
-              {symbol}
-              <span className="text-xs ml-2 opacity-70">{name}</span>
-            </button>
-          ))}
+        {/* Status Badges */}
+        <div className="flex items-center gap-2 justify-end -mb-2">
+          {divergenceDetected && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-500/10 text-orange-500 border border-orange-500/20">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              <span className="text-xs font-medium">Divergence Detected</span>
+            </div>
+          )}
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-neon-cyan/10 text-neon-cyan">
+            <Zap className="h-3.5 w-3.5" />
+            <span className="text-xs font-medium">
+              {pred1d?.individual_models.filter(m => !m.model_name.toLowerCase().includes('markov')).length || 0} Models Active
+            </span>
+          </div>
         </div>
 
         {/* Summary Metrics */}
@@ -391,6 +399,24 @@ const PredictionsPageNew = () => {
           />
         )}
 
+        {/* Custom Horizon Prediction - Hero Section */}
+        <CustomHorizonPredictor selectedIndex={selectedIndex} />
+
+        {/* Transition Matrix + Duration Stats - Side by Side */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          <TransitionMatrixHeatmap selectedIndex={selectedIndex} />
+          <RegimeDurationStats selectedIndex={selectedIndex} />
+        </div>
+
+        {/* Backtest + Confidence Sparklines - Side by Side */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          <BacktestChart selectedIndex={selectedIndex} />
+          <ConfidenceSparklines selectedIndex={selectedIndex} />
+        </div>
+
+        {/* What If Scenario Tool */}
+        <WhatIfScenario selectedIndex={selectedIndex} />
+
         {/* Model Accuracy Table */}
         {accuracyData && (
           <FlipCard
@@ -439,8 +465,6 @@ const PredictionsPageNew = () => {
           />
         )}
 
-        {/* Custom Horizon Prediction */}
-        <CustomHorizonPredictor selectedIndex={selectedIndex} />
       </div>
     </DashboardLayout>
   );
