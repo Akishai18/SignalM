@@ -245,6 +245,64 @@ export interface CorrelationMatrix {
   timestamp: string;
 }
 
+// Correlation page types
+export interface SectorMatrixResponse {
+  sectors: string[];
+  tickers: string[];
+  matrix: number[][];
+  stats: { mean: number; max: number; min: number; std: number };
+  window: number;
+  method: string;
+  timestamp: string;
+}
+
+export interface RollingCorrelationPoint {
+  date: string;
+  corr_21d: number | null;
+  corr_63d: number | null;
+  corr_252d: number | null;
+}
+
+export interface RollingCorrelationResponse {
+  points: RollingCorrelationPoint[];
+}
+
+export interface RegimeCorrelationPoint {
+  date: string;
+  avg_correlation: number;
+  regime: number;
+  regime_name: string;
+}
+
+export interface RegimeCorrelationResponse {
+  points: RegimeCorrelationPoint[];
+}
+
+export interface PCAStructurePoint {
+  date: string;
+  pc1_var: number;
+  cum_var_3: number;
+  effective_dimension: number;
+}
+
+export interface PCAStructureResponse {
+  points: PCAStructurePoint[];
+}
+
+export interface SectorPairPoint {
+  date: string;
+  correlation: number;
+}
+
+export interface SectorPairResponse {
+  sector1: string;
+  sector1_name: string;
+  sector2: string;
+  sector2_name: string;
+  current_correlation: number | null;
+  points: SectorPairPoint[];
+}
+
 export interface HealthCheck {
   status: string;
   data_loaded: boolean;
@@ -550,9 +608,36 @@ export const api = {
 
   /**
    * Get correlation matrix for sector/factor analysis
+   * @deprecated Use getSectorMatrix instead
    */
   async getCorrelationMatrix(): Promise<CorrelationMatrix> {
-    const response = await fetch(`${API_BASE_URL}/api/correlations/matrix`);
+    const response = await fetch(`${API_BASE_URL}/api/correlations/sector-matrix`);
+    const data = await handleResponse<SectorMatrixResponse>(response);
+    return { sectors: data.sectors, matrix: data.matrix, timestamp: data.timestamp };
+  },
+
+  async getSectorMatrix(window: number = 63, method: string = 'pearson'): Promise<SectorMatrixResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/correlations/sector-matrix?window=${window}&method=${method}`);
+    return handleResponse(response);
+  },
+
+  async getRollingCorrelation(): Promise<RollingCorrelationResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/correlations/rolling`);
+    return handleResponse(response);
+  },
+
+  async getRegimeCorrelation(): Promise<RegimeCorrelationResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/correlations/regime-correlation`);
+    return handleResponse(response);
+  },
+
+  async getPCAStructure(): Promise<PCAStructureResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/correlations/pca-structure`);
+    return handleResponse(response);
+  },
+
+  async getSectorPairDetail(sector1: string, sector2: string): Promise<SectorPairResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/correlations/sector-pair-detail?sector1=${sector1}&sector2=${sector2}`);
     return handleResponse(response);
   },
 

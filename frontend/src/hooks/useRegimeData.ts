@@ -33,6 +33,12 @@ import api, {
   TransitionMatrixResponse,
   BacktestResponse,
   WhatIfResponse,
+  // Correlation types
+  SectorMatrixResponse,
+  RollingCorrelationResponse,
+  RegimeCorrelationResponse,
+  PCAStructureResponse,
+  SectorPairResponse,
 } from '@/lib/api';
 
 // Query keys for cache management
@@ -69,6 +75,12 @@ export const queryKeys = {
   transitions: (symbol: string) => ['predictions', symbol, 'transitions'] as const,
   backtest: (symbol: string) => ['predictions', symbol, 'backtest'] as const,
   whatIf: (symbol: string, params: string) => ['predictions', symbol, 'what-if', params] as const,
+  // Correlation page
+  sectorMatrix: (window: number, method: string) => ['correlations', 'sector-matrix', window, method] as const,
+  rollingCorrelation: ['correlations', 'rolling'] as const,
+  regimeCorrelation: ['correlations', 'regime-correlation'] as const,
+  pcaStructure: ['correlations', 'pca-structure'] as const,
+  sectorPairDetail: (s1: string, s2: string) => ['correlations', 'sector-pair', s1, s2] as const,
 };
 
 /**
@@ -516,5 +528,56 @@ export function useRegimeTrajectory(
     enabled: false,
     staleTime: 60 * 1000,
     gcTime: 5 * 60 * 1000,
+  });
+}
+
+// ============================================================================
+// Correlation Page Hooks
+// ============================================================================
+
+export function useSectorMatrix(
+  window: number = 63,
+  method: string = 'pearson'
+): UseQueryResult<SectorMatrixResponse, Error> {
+  return useQuery({
+    queryKey: queryKeys.sectorMatrix(window, method),
+    queryFn: () => api.getSectorMatrix(window, method),
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useRollingCorrelation(): UseQueryResult<RollingCorrelationResponse, Error> {
+  return useQuery({
+    queryKey: queryKeys.rollingCorrelation,
+    queryFn: api.getRollingCorrelation,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useRegimeCorrelation(): UseQueryResult<RegimeCorrelationResponse, Error> {
+  return useQuery({
+    queryKey: queryKeys.regimeCorrelation,
+    queryFn: api.getRegimeCorrelation,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function usePCAStructure(): UseQueryResult<PCAStructureResponse, Error> {
+  return useQuery({
+    queryKey: queryKeys.pcaStructure,
+    queryFn: api.getPCAStructure,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useSectorPairDetail(
+  sector1: string,
+  sector2: string
+): UseQueryResult<SectorPairResponse, Error> {
+  return useQuery({
+    queryKey: queryKeys.sectorPairDetail(sector1, sector2),
+    queryFn: () => api.getSectorPairDetail(sector1, sector2),
+    staleTime: 2 * 60 * 1000,
+    enabled: !!sector1 && !!sector2 && sector1 !== sector2,
   });
 }
