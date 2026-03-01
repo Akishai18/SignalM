@@ -37,6 +37,31 @@ try:
 except Exception as e:
     print(f"⚠ Failed to load correlations router: {e}")
 
+# Log precomputed file availability at startup
+_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_precomputed_dir = os.path.join(_root, 'precomputed')
+if os.path.isdir(_precomputed_dir):
+    _files = [f for f in os.listdir(_precomputed_dir) if f.endswith('.json')]
+    print(f"✓ Precomputed directory found: {_precomputed_dir} ({len(_files)} files)")
+else:
+    print(f"⚠ Precomputed directory NOT found at: {_precomputed_dir}")
+    print(f"  CWD: {os.getcwd()}")
+
+
+@app.get("/api/debug/precomputed")
+def debug_precomputed():
+    """Check if precomputed files are accessible."""
+    exists = os.path.isdir(_precomputed_dir)
+    files = os.listdir(_precomputed_dir) if exists else []
+    return {
+        "precomputed_dir": _precomputed_dir,
+        "exists": exists,
+        "file_count": len([f for f in files if f.endswith('.json')]),
+        "cwd": os.getcwd(),
+        "files": sorted(files)[:10],
+    }
+
+
 # CORS configuration for frontend
 app.add_middleware(
     CORSMiddleware,

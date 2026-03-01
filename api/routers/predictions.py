@@ -18,6 +18,19 @@ from regime.inference import load_prediction_engine, RegimePredictionEngine
 from regime.transitions import compute_transition_matrix, compute_regime_durations, find_common_transition_paths
 from fastapi.responses import StreamingResponse
 import io
+import json
+
+
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+def _load_precomputed(filename: str):
+    """Try to load a precomputed JSON file. Returns dict or None."""
+    path = os.path.join(_PROJECT_ROOT, 'precomputed', f'{filename}.json')
+    if os.path.exists(path):
+        with open(path, 'r') as f:
+            return json.load(f)
+    return None
 
 router = APIRouter(prefix="/api/predictions", tags=["predictions"])
 
@@ -878,6 +891,11 @@ def get_transitions(symbol: str):
     """Compute transition matrix, durations, and common paths for an index."""
     try:
         symbol = symbol.upper()
+
+        # Try precomputed first
+        cached = _load_precomputed(f'{symbol.lower()}_transitions')
+        if cached:
+            return cached
         regime_map = get_regime_label_map()
 
         # Load regime labels
@@ -947,6 +965,13 @@ def get_backtest(symbol: str, days: int = Query(252, ge=30, le=1000)):
     """Rolling backtest accuracy for ensemble predictions across horizons."""
     try:
         symbol = symbol.upper()
+
+        # Try precomputed first (default 252 days)
+        if days == 252:
+            cached = _load_precomputed(f'{symbol.lower()}_backtest')
+            if cached:
+                return cached
+
         engine = get_prediction_engine(symbol)
         features, current_regime = load_current_features(symbol)
         regime_map = get_regime_label_map()
