@@ -1,114 +1,209 @@
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { VolatilityGauge } from "@/components/dashboard/VolatilityGauge";
-import { TimeSeriesChart } from "@/components/dashboard/TimeSeriesChart";
-import { Button } from "@/components/ui/button";
-import { Settings2, Download, Play } from "lucide-react";
+import { useState, useMemo } from 'react';
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import VolatilityTimeSeriesChart from '@/components/volatility/VolatilityTimeSeriesChart';
+import VolatilityByRegimeChart from '@/components/volatility/VolatilityByRegimeChart';
+import RegimeRiskReturnChart from '@/components/volatility/RegimeRiskReturnChart';
+import RegimePerformanceTable from '@/components/volatility/RegimePerformanceTable';
+import { useMergedMarketData, useVIXCurrent, useDashboardMetrics, useCurrentRegime } from '@/hooks/useRegimeData';
+import { Loader2, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+
+const REGIME_COLORS: Record<string, string> = {
+  Calm: '#10b981',
+  Crisis: '#ef4444',
+  'Elevated Stress': '#f59e0b',
+  Transition: '#8b5cf6',
+};
+
+const VOL_WINDOWS = [
+  { value: 21, label: '21d' },
+  { value: 63, label: '63d' },
+  { value: 126, label: '126d' },
+  { value: 252, label: '252d' },
+];
+
+function computeRollingVol(returns: (number | null)[], w: number): (number | null)[] {
+  const result: (number | null)[] = new Array(returns.length).fill(null);
+  for (let i = w - 1; i < returns.length; i++) {
+    const slice: number[] = [];
+    for (let j = i - w + 1; j <= i; j++) {
+      if (returns[j] != null) slice.push(returns[j]!);
+    }
+    if (slice.length < Math.floor(w * 0.8)) continue;
+    const mean = slice.reduce((a, b) => a + b, 0) / slice.length;
+    const variance = slice.reduce((a, b) => a + (b - mean) ** 2, 0) / (slice.length - 1);
+    result[i] = Math.sqrt(variance) * Math.sqrt(252) * 100;
+  }
+  return result;
+}
+
+function StatCard({
+  label,
+  value,
+  sub,
+  delta,
+  deltaLabel,
+  color,
+  isLoading,
+}: {
+  label: string;
+  value: string | null;
+  sub?: string;
+  delta?: number | null;
+  deltaLabel?: string;
+  color?: string;
+  isLoading?: boolean;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-5">
+      <div className="text-xs text-muted-foreground mb-2">{label}</div>
+      {isLoading ? (
+        <div className="flex items-center h-10">
+          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+        </div>
+      ) : (
+        <div className="flex items-end justify-between gap-2">
+          <div className="text-2xl font-bold font-mono" style={color ? { color } : undefined}>
+            {value ?? '—'}
+          </div>
+          {delta != null && (
+            <div
+              className={`flex items-center gap-0.5 text-xs font-mono mb-0.5 ${
+                delta > 0.005 ? 'text-red-400' : delta < -0.005 ? 'text-emerald-400' : 'text-muted-foreground'
+              }`}
+            >
+              {delta > 0.005 ? (
+                <TrendingUp className="h-3 w-3" />
+              ) : delta < -0.005 ? (
+                <TrendingDown className="h-3 w-3" />
+              ) : (
+                <Minus className="h-3 w-3" />
+              )}
+              <span>{delta > 0 ? '+' : ''}{(delta * 100).toFixed(1)}%</span>
+            </div>
+          )}
+        </div>
+      )}
+      {sub && <div className="text-[10px] text-muted-foreground mt-1">{sub}</div>}
+      {deltaLabel && delta != null && (
+        <div className="text-[10px] text-muted-foreground mt-0.5">{deltaLabel}</div>
+      )}
+    </div>
+  );
+}
 
 const VolatilityPage = () => {
+  const [volWindow, setVolWindow] = useState(252);
+
+  const { data: mergedData, isLoading: mergedLoading } = useMergedMarketData(1500);
+  const { data: vixCurrent, isLoading: vixLoading } = useVIXCurrent();
+  const { data: metrics, isLoading: metricsLoading } = useDashboardMetrics();
+  const { data: currentRegime } = useCurrentRegime();
+
+  // Compute rolling vol series for selected window from merged data returns
+  const volSeries = useMemo(() => {
+    const pts = mergedData?.data ?? [];
+    if (volWindow === 252) {
+      return pts.map(p => p.spy_vol_252d != null ? p.spy_vol_252d * 100 : null);
+    }
+    const rets = pts.map(p => p.spy_returns ?? null);
+    return computeRollingVol(rets, volWindow);
+  }, [mergedData, volWindow]);
+
+  const latestVol = volSeries.filter(v => v != null).at(-1) ?? null;
+  const nonNull = volSeries.map((v, i) => v != null ? { v, i } : null).filter(Boolean) as { v: number; i: number }[];
+  const prev = nonNull.length >= 22 ? nonNull.at(-22)?.v ?? null : null;
+  const volDelta = latestVol != null && prev != null ? (latestVol - prev) / 100 : null;
+
+  const regimeColor = currentRegime ? REGIME_COLORS[currentRegime.regime_name] : undefined;
+  const vixColor = vixCurrent == null ? undefined
+    : vixCurrent.close >= 30 ? '#ef4444'
+    : vixCurrent.close >= 20 ? '#f59e0b'
+    : '#10b981';
+
   return (
     <DashboardLayout>
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-30">
-        <div className="px-6 py-4">
+        <div className="px-6 py-3">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold tracking-tight">
                 Volatility <span className="text-gradient">Regimes</span>
               </h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Hidden Markov Model regime detection
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Realized vol, VIX, and regime-conditioned risk analytics
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="gap-2">
-                <Settings2 className="h-4 w-4" />
-                Configure HMM
-              </Button>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Download className="h-4 w-4" />
-                Export
-              </Button>
-              <Button variant="neon" size="sm" className="gap-2">
-                <Play className="h-4 w-4" />
-                Run Analysis
-              </Button>
+
+            <div className="flex items-center gap-3">
+              {/* Vol window selector */}
+              <div className="flex items-center gap-1.5">
+                {VOL_WINDOWS.map(w => (
+                  <button
+                    key={w.value}
+                    onClick={() => setVolWindow(w.value)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                      volWindow === w.value
+                        ? 'bg-primary text-primary-foreground shadow-md'
+                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                    }`}
+                  >
+                    {w.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Current regime badge */}
+              {currentRegime && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-muted/30">
+                  <div className="h-2 w-2 rounded-full animate-pulse" style={{ backgroundColor: regimeColor }} />
+                  <span className="text-sm font-medium" style={{ color: regimeColor }}>
+                    {currentRegime.regime_name}
+                  </span>
+                  <span className="text-xs text-muted-foreground">· day {currentRegime.days_in_regime}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </header>
 
       <div className="p-6 space-y-6">
+        {/* Row 1: Stat cards */}
         <div className="grid gap-6 lg:grid-cols-3">
-          <VolatilityGauge value={28.5} label="Current Regime" regime="low" />
-          <VolatilityGauge value={52.3} label="30-Day Outlook" regime="medium" />
-          <VolatilityGauge value={71.8} label="Stress Scenario" regime="high" />
+          <StatCard
+            label={`Realized Volatility (${volWindow}d)`}
+            value={latestVol != null ? `${latestVol.toFixed(1)}%` : null}
+            sub={`SPY annualized ${volWindow}-day realized vol`}
+            delta={volDelta}
+            deltaLabel="vs 21 trading days ago"
+            isLoading={mergedLoading}
+          />
+          <StatCard
+            label="VIX — Implied Volatility"
+            value={vixCurrent ? vixCurrent.close.toFixed(1) : null}
+            sub="CBOE fear gauge — options market expectation"
+            color={vixColor}
+            isLoading={vixLoading}
+          />
+          <StatCard
+            label="Vol Dispersion"
+            value={metrics ? metrics.vol_dispersion.toFixed(4) : null}
+            sub="Cross-sectional std of 252d vol — K-means feature"
+            isLoading={metricsLoading}
+          />
         </div>
 
-        <TimeSeriesChart />
+        {/* Row 2: Full-width time series */}
+        <VolatilityTimeSeriesChart volWindow={volWindow} volSeries={volSeries} />
 
+        {/* Row 3: Volatility by regime + Sharpe/win rate */}
         <div className="grid gap-6 lg:grid-cols-2">
-          <div className="rounded-xl border border-border bg-card p-5">
-            <h3 className="text-lg font-semibold mb-4">Regime Transition Matrix</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-2 font-medium text-muted-foreground">From / To</th>
-                    <th className="text-center py-2 font-medium text-neon-green">Low Vol</th>
-                    <th className="text-center py-2 font-medium text-neon-cyan">Medium</th>
-                    <th className="text-center py-2 font-medium text-neon-magenta">High Vol</th>
-                  </tr>
-                </thead>
-                <tbody className="font-mono">
-                  <tr className="border-b border-border/50">
-                    <td className="py-3 font-medium text-neon-green">Low Vol</td>
-                    <td className="text-center py-3">0.85</td>
-                    <td className="text-center py-3">0.12</td>
-                    <td className="text-center py-3">0.03</td>
-                  </tr>
-                  <tr className="border-b border-border/50">
-                    <td className="py-3 font-medium text-neon-cyan">Medium</td>
-                    <td className="text-center py-3">0.25</td>
-                    <td className="text-center py-3">0.55</td>
-                    <td className="text-center py-3">0.20</td>
-                  </tr>
-                  <tr>
-                    <td className="py-3 font-medium text-neon-magenta">High Vol</td>
-                    <td className="text-center py-3">0.10</td>
-                    <td className="text-center py-3">0.35</td>
-                    <td className="text-center py-3">0.55</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-border bg-card p-5">
-            <h3 className="text-lg font-semibold mb-4">Regime Statistics</h3>
-            <div className="space-y-4">
-              {[
-                { regime: "Low Volatility", duration: "45 days avg", probability: 58, color: "neon-green" },
-                { regime: "Medium Volatility", duration: "21 days avg", probability: 28, color: "neon-cyan" },
-                { regime: "High Volatility", duration: "12 days avg", probability: 14, color: "neon-magenta" },
-              ].map((item) => (
-                <div key={item.regime} className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="font-medium">{item.regime}</span>
-                    <span className="text-muted-foreground">{item.duration}</span>
-                  </div>
-                  <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                    <div
-                      className={`h-full rounded-full bg-${item.color}`}
-                      style={{ width: `${item.probability}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground text-right">
-                    {item.probability}% of observations
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
+          <VolatilityByRegimeChart />
+          <RegimeRiskReturnChart />
         </div>
+
+        {/* Row 4: Full performance table */}
+        <RegimePerformanceTable />
       </div>
     </DashboardLayout>
   );
