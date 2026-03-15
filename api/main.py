@@ -37,6 +37,13 @@ try:
 except Exception as e:
     print(f"⚠ Failed to load correlations router: {e}")
 
+try:
+    from api.routers.pca import router as pca_router
+    app.include_router(pca_router)
+    print("✓ PCA router loaded successfully")
+except Exception as e:
+    print(f"⚠ Failed to load PCA router: {e}")
+
 # Log precomputed file availability at startup
 _root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _precomputed_dir = os.path.join(_root, 'precomputed')

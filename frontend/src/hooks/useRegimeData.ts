@@ -4,6 +4,11 @@
  */
 import { useQuery, UseQueryResult } from '@tanstack/react-query';
 import api, {
+  PCAStructureFullResponse,
+  PCALoadingsResponse,
+  PCAComponentsResponse,
+  PCARegimeScoresResponse,
+  PCAScatterResponse,
   RegimeLabel,
   CurrentRegime,
   RegimeHistoryPoint,
@@ -567,6 +572,50 @@ export function usePCAStructure(): UseQueryResult<PCAStructureResponse, Error> {
     queryKey: queryKeys.pcaStructure,
     queryFn: api.getPCAStructure,
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+// ============================================================================
+// PCA Hooks
+// ============================================================================
+
+export function usePCAStructureFull(): UseQueryResult<PCAStructureFullResponse, Error> {
+  return useQuery({
+    queryKey: ['pca', 'structure', 'full'],
+    queryFn: api.getPCAStructureFull,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function usePCALoadings(topN: number = 12): UseQueryResult<PCALoadingsResponse, Error> {
+  return useQuery({
+    queryKey: ['pca', 'loadings', topN],
+    queryFn: () => api.getPCALoadings(topN),
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
+export function usePCAComponents(): UseQueryResult<PCAComponentsResponse, Error> {
+  return useQuery({
+    queryKey: ['pca', 'components'],
+    queryFn: api.getPCAComponents,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function usePCARegimeScores(): UseQueryResult<PCARegimeScoresResponse, Error> {
+  return useQuery({
+    queryKey: ['pca', 'regime-scores'],
+    queryFn: api.getPCARegimeScores,
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
+export function usePCAScatter(): UseQueryResult<PCAScatterResponse, Error> {
+  return useQuery({
+    queryKey: ['pca', 'scatter'],
+    queryFn: api.getPCAScatter,
+    staleTime: 10 * 60 * 1000,
   });
 }
 
