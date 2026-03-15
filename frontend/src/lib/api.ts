@@ -303,6 +303,86 @@ export interface SectorPairResponse {
   points: SectorPairPoint[];
 }
 
+// ============================================================================
+// PCA types
+// ============================================================================
+
+export interface PCAStructureFullPoint {
+  date: string;
+  pc1_var: number;
+  pc2_var: number;
+  pc3_var: number;
+  cum_var_3: number;
+  effective_dimension: number;
+}
+
+export interface PCAStructureFullResponse {
+  points: PCAStructureFullPoint[];
+  summary: {
+    current_pc1_var: number;
+    current_pc2_var: number;
+    current_pc3_var: number;
+    current_cum_var_3: number;
+    current_eff_dim: number;
+  };
+}
+
+export interface PCALoadingItem {
+  feature: string;
+  raw_feature: string;
+  loading: number;
+}
+
+export interface PCALoadingsResponse {
+  loadings: Record<string, PCALoadingItem[]>;
+  variance_explained: Record<string, number>;
+  top_n: number;
+  total_features: number;
+}
+
+export interface PCAComponentPoint {
+  date: string;
+  pc1: number | null;
+  pc2: number | null;
+  pc3: number | null;
+  regime: number | null;
+  regime_name: string | null;
+}
+
+export interface PCAComponentsResponse {
+  points: PCAComponentPoint[];
+}
+
+export interface PCARegimeScore {
+  regime_id: number;
+  regime_name: string;
+  count: number;
+  pc1_mean: number;
+  pc1_std: number;
+  pc2_mean: number;
+  pc2_std: number;
+  pc3_mean: number;
+  pc3_std: number;
+}
+
+export interface PCARegimeScoresResponse {
+  regimes: PCARegimeScore[];
+}
+
+export interface PCAScatterPoint {
+  pc1: number;
+  pc2: number;
+  pc3: number | null;
+  regime: number;
+  regime_name: string;
+  date: string;
+}
+
+export interface PCAScatterResponse {
+  points: PCAScatterPoint[];
+  variance_explained: Record<string, number>;
+}
+
 export interface HealthCheck {
   status: string;
   data_loaded: boolean;
@@ -638,6 +718,31 @@ export const api = {
 
   async getSectorPairDetail(sector1: string, sector2: string): Promise<SectorPairResponse> {
     const response = await fetch(`${API_BASE_URL}/api/correlations/sector-pair-detail?sector1=${sector1}&sector2=${sector2}`);
+    return handleResponse(response);
+  },
+
+  async getPCAStructureFull(): Promise<PCAStructureFullResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/pca/structure`);
+    return handleResponse(response);
+  },
+
+  async getPCALoadings(topN: number = 12): Promise<PCALoadingsResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/pca/loadings?top_n=${topN}`);
+    return handleResponse(response);
+  },
+
+  async getPCAComponents(): Promise<PCAComponentsResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/pca/components`);
+    return handleResponse(response);
+  },
+
+  async getPCARegimeScores(): Promise<PCARegimeScoresResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/pca/regime-scores`);
+    return handleResponse(response);
+  },
+
+  async getPCAScatter(): Promise<PCAScatterResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/pca/scatter`);
     return handleResponse(response);
   },
 
