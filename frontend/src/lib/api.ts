@@ -865,6 +865,83 @@ export const api = {
 };
 
 // ============================================================================
+// Custom Data Upload API
+// ============================================================================
+
+export const customDataApi = {
+  async upload(file: File, datasetName: string): Promise<{ session_id: string; status: string; dataset_name: string }> {
+    const form = new FormData();
+    form.append("file", file);
+    form.append("dataset_name", datasetName);
+    const response = await fetch(`${API_BASE_URL}/api/custom/upload`, {
+      method: "POST",
+      body: form,
+    });
+    return handleResponse(response);
+  },
+
+  async getStatus(sessionId: string): Promise<{ status: string; progress_pct: number; message: string; error?: string }> {
+    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}/status`);
+    return handleResponse(response);
+  },
+
+  async getMeta(sessionId: string): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}/meta`);
+    return handleResponse(response);
+  },
+
+  async listDatasets(ids: string): Promise<any[]> {
+    const response = await fetch(`${API_BASE_URL}/api/custom/list?ids=${encodeURIComponent(ids)}`);
+    return handleResponse(response);
+  },
+
+  async deleteDataset(sessionId: string): Promise<{ deleted: boolean }> {
+    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}`, { method: "DELETE" });
+    return handleResponse(response);
+  },
+
+  async getOverview(sessionId: string): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}/overview`);
+    return handleResponse(response);
+  },
+
+  async getHistory(sessionId: string): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}/history`);
+    return handleResponse(response);
+  },
+
+  async getTransitions(sessionId: string): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}/transitions`);
+    return handleResponse(response);
+  },
+
+  async getPerformance(sessionId: string): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}/performance`);
+    return handleResponse(response);
+  },
+
+  async getFeatures(sessionId: string): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}/features`);
+    return handleResponse(response);
+  },
+
+  async getPredictions(sessionId: string): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}/predictions`);
+    return handleResponse(response);
+  },
+
+  async predictHorizon(sessionId: string, horizon: number): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}/predict?horizon=${horizon}`);
+    return handleResponse(response);
+  },
+
+  async predictTrajectory(sessionId: string, horizon: number): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}/predict/trajectory?horizon=${horizon}`);
+    return handleResponse(response);
+  },
+};
+
+// ============================================================================
 // Helper Functions
 // ============================================================================
 
@@ -913,4 +990,5 @@ export function getRegimeName(regimeId: number): string {
   return names[regimeId] || 'Unknown';
 }
 
-export default api;
+const apiWithCustomData = { ...api, customData: customDataApi };
+export default apiWithCustomData;

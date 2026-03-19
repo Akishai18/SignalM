@@ -9,6 +9,7 @@ import CorrelationPage from "./pages/CorrelationPage";
 import VolatilityPage from "./pages/VolatilityPage";
 import FactorsPage from "./pages/FactorsPage";
 import UploadPage from "./pages/UploadPage";
+import DatasetDashboardPage from "./pages/DatasetDashboardPage";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 
@@ -27,6 +28,7 @@ const App = () => (
           <Route path="/volatility" element={<VolatilityPage />} />
           <Route path="/factors" element={<FactorsPage />} />
           <Route path="/upload" element={<UploadPage />} />
+          <Route path="/upload/:datasetId" element={<DatasetDashboardPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

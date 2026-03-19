@@ -12,6 +12,13 @@ from datetime import datetime, timedelta
 import sys
 import os
 
+# Load .env for local development (no-op in production where vars are set directly)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -43,6 +50,13 @@ try:
     print("✓ PCA router loaded successfully")
 except Exception as e:
     print(f"⚠ Failed to load PCA router: {e}")
+
+try:
+    from api.routers.custom_data import router as custom_data_router
+    app.include_router(custom_data_router)
+    print("✓ Custom data router loaded successfully")
+except Exception as e:
+    print(f"⚠ Failed to load custom data router: {e}")
 
 # Log precomputed file availability at startup
 _root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
