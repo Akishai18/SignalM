@@ -170,6 +170,10 @@
     animation: pulse-glow 2s ease-in-out infinite;
   }
 
+  .animate-pulse-glow-icon {
+    animation: pulse-glow-icon 2s ease-in-out infinite;
+  }
+
   .animate-float {
     animation: float 6s ease-in-out infinite;
   }
@@ -247,6 +251,15 @@
   50% {
     opacity: 0.8;
     box-shadow: 0 0 40px hsl(var(--primary) / 0.6);
+  }
+}
+
+@keyframes pulse-glow-icon {
+  0%, 100% {
+    filter: drop-shadow(0 0 6px hsl(var(--primary) / 0.7));
+  }
+  50% {
+    filter: drop-shadow(0 0 12px hsl(var(--primary) / 0.9));
   }
 }
 
