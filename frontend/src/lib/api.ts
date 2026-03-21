@@ -990,5 +990,62 @@ export function getRegimeName(regimeId: number): string {
   return names[regimeId] || 'Unknown';
 }
 
+// ── Backtester types ──────────────────────────────────────────────────────────
+
+export interface EquityCurvePoint {
+  date: string;
+  value: number;
+  benchmark: number;
+}
+
+export interface BacktestStats {
+  total_return_pct: number;
+  cagr_pct: number;
+  sharpe_ratio: number;
+  max_drawdown_pct: number;
+  calmar_ratio: number;
+  win_rate_pct: number;
+  num_rebalances: number;
+  benchmark_total_return_pct: number;
+  benchmark_sharpe: number;
+}
+
+export interface RegimeBreakdownItem {
+  regime_id: number;
+  days: number;
+  pct_time: number;
+  avg_daily_return_pct: number;
+  total_contribution_pct: number;
+}
+
+export interface BacktestResult {
+  equity_curve: EquityCurvePoint[];
+  stats: BacktestStats;
+  regime_breakdown: RegimeBreakdownItem[];
+  rebalance_dates: string[];
+  tickers_used: string[];
+  date_range: { start: string; end: string };
+}
+
+export interface BacktestApiRequest {
+  allocations: Record<string, Record<string, number>>;
+  transaction_cost_bps: number;
+  start_date?: string | null;
+  end_date?: string | null;
+}
+
+// ── Backtester API ────────────────────────────────────────────────────────────
+
+export const backtesterApi = {
+  async runBacktest(req: BacktestApiRequest): Promise<BacktestResult> {
+    const response = await fetch(`${API_BASE_URL}/api/backtester/run`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req),
+    });
+    return handleResponse<BacktestResult>(response);
+  },
+};
+
 const apiWithCustomData = { ...api, customData: customDataApi };
 export default apiWithCustomData;
