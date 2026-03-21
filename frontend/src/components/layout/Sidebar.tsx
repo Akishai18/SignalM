@@ -41,10 +41,7 @@ export function Sidebar() {
       {/* Logo */}
       <div className="flex h-16 items-center justify-between border-b border-border px-4">
         <div className={cn("flex items-center gap-3", collapsed && "justify-center w-full")}>
-          <div className="relative">
-            <Zap className="h-7 w-7 text-primary animate-pulse-glow" />
-            <div className="absolute inset-0 blur-md bg-primary/30" />
-          </div>
+          <Zap className="h-7 w-7 text-primary animate-pulse-glow-icon" />
           {!collapsed && (
             <span className="font-semibold text-lg tracking-tight">
               <span className="text-gradient">SignalM</span>
