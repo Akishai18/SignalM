@@ -58,6 +58,13 @@ try:
 except Exception as e:
     print(f"⚠ Failed to load custom data router: {e}")
 
+try:
+    from api.routers.backtester import router as backtester_router
+    app.include_router(backtester_router)
+    print("✓ Backtester router loaded successfully")
+except Exception as e:
+    print(f"⚠ Failed to load backtester router: {e}")
+
 # Log precomputed file availability at startup
 _root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _precomputed_dir = os.path.join(_root, 'precomputed')

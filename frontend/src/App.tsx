@@ -11,6 +11,7 @@ import FactorsPage from "./pages/FactorsPage";
 import UploadPage from "./pages/UploadPage";
 import DatasetDashboardPage from "./pages/DatasetDashboardPage";
 import SettingsPage from "./pages/SettingsPage";
+import BacktesterPage from "./pages/BacktesterPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
           <Route path="/factors" element={<FactorsPage />} />
           <Route path="/upload" element={<UploadPage />} />
           <Route path="/upload/:datasetId" element={<DatasetDashboardPage />} />
+          <Route path="/backtester" element={<BacktesterPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
