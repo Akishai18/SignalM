@@ -20,7 +20,14 @@ from api.utils.backtester import run_backtest, BacktestValidationError
 
 router = APIRouter(prefix="/api/backtester", tags=["backtester"])
 
-_LABELS_PATH = Path("regime_results/regime_labels_k4.csv")
+# Prefer the daily-updated SPY index regime labels (kept current by refresh_pipeline.py).
+# Fall back to the 500-stock K4 labels when the index file is absent.
+_SPY_INDEX_LABELS_PATH = Path("regime_results/indices/spy_regimes.csv")
+_LABELS_PATH = (
+    _SPY_INDEX_LABELS_PATH
+    if _SPY_INDEX_LABELS_PATH.exists()
+    else Path("regime_results/regime_labels_k4.csv")
+)
 
 
 # ── Pydantic models ───────────────────────────────────────────────────────────
@@ -127,7 +134,7 @@ def _load_regime_labels(
                 f"expected 1 data column, got {df.shape[1]}."
             ),
         )
-    labels = df.iloc[:, 0]
+    labels = df.iloc[:, 0].dropna()   # drop warmup-period NaN rows
     if start:
         labels = labels.loc[start:]
     if end:
