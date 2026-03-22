@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { Sidebar } from "./Sidebar";
 
 interface DashboardLayoutProps {
@@ -6,10 +6,15 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
+  const [collapsed, setCollapsed] = useState(false);
+
   return (
     <div className="min-h-screen bg-background">
-      <Sidebar />
-      <main className="pl-16 lg:pl-64 transition-all duration-300">
+      <Sidebar collapsed={collapsed} onCollapse={setCollapsed} />
+      <main
+        className="transition-all duration-300"
+        style={{ paddingLeft: collapsed ? "4rem" : "16rem" }}
+      >
         <div className="min-h-screen">
           {children}
         </div>
