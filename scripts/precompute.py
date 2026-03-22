@@ -391,8 +391,14 @@ def precompute_correlations():
 
     # --- regime correlation ---
     print('[correlations] regime overlay...')
-    regime_labels = pd.read_csv('regime_results/regime_labels_k4.csv',
-                                parse_dates=['Date'], index_col='Date')['regime_k4']
+    # Prefer the daily-updated SPY index regime labels so the overlay extends
+    # to the current date. Fall back to the 500-stock K4 labels if absent.
+    _spy_index_path = 'regime_results/indices/spy_regimes.csv'
+    if os.path.exists(_spy_index_path):
+        regime_labels = pd.read_csv(_spy_index_path, parse_dates=['Date'], index_col='Date').squeeze()
+    else:
+        regime_labels = pd.read_csv('regime_results/regime_labels_k4.csv',
+                                    parse_dates=['Date'], index_col='Date')['regime_k4']
     w = 63
     corr_series = rolling_data[w]
     common = corr_series.index.intersection(regime_labels.index)

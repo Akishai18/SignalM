@@ -1,0 +1,16 @@
+{
+  "last_refresh_utc": "2026-03-21T23:45:07.612132+00:00",
+  "completed_utc": "2026-03-21T23:45:11.652487+00:00",
+  "data_through": "2026-03-20",
+  "total_rows_added": 0,
+  "tickers_updated": [],
+  "index_regimes_succeeded": [
+    "SPY",
+    "QQQ",
+    "DIA",
+    "IWM"
+  ],
+  "index_regimes_failed": [],
+  "pipeline_duration_seconds": 4.0,
+  "success": true
+}
