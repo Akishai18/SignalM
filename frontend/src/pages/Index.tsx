@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Activity, TrendingUp, BarChart3, Layers, AlertCircle } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { MetricCard } from "@/components/dashboard/MetricCard";
@@ -18,6 +18,11 @@ import { formatPercent } from "@/lib/api";
 
 const Index = () => {
   const [selectedIndex, setSelectedIndex] = useState<string>("SPY");
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, []);
   const { currentRegime, metrics, forecast, health, isLoading, isError, error } = useDashboardData();
   const { data: indexRegime } = useIndexCurrentRegime(selectedIndex);
 
@@ -84,7 +89,7 @@ const Index = () => {
                 {healthData?.status === 'healthy' ? 'Live' : 'Offline'}
               </div>
               <span className="text-muted-foreground">
-                {regimeData?.date ? new Date(regimeData.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Loading...'} • {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York' })} EST
+                {now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} • {now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York' })} EST
               </span>
             </div>
           </div>

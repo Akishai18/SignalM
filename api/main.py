@@ -65,6 +65,13 @@ try:
 except Exception as e:
     print(f"⚠ Failed to load backtester router: {e}")
 
+try:
+    from api.routers.refresh_status import router as refresh_status_router
+    app.include_router(refresh_status_router)
+    print("✓ Refresh status router loaded successfully")
+except Exception as e:
+    print(f"⚠ Failed to load refresh status router: {e}")
+
 # Log precomputed file availability at startup
 _root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _precomputed_dir = os.path.join(_root, 'precomputed')
