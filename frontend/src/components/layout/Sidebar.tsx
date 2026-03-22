@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React from "react";
 import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -27,8 +27,12 @@ const navItems = [
   { icon: Settings, label: "Settings", path: "/settings" },
 ];
 
-export function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false);
+interface SidebarProps {
+  collapsed: boolean;
+  onCollapse: (collapsed: boolean) => void;
+}
+
+export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
 
   return (
     <aside
@@ -95,7 +99,7 @@ export function Sidebar() {
         </div>
         
         <button
-          onClick={() => setCollapsed(!collapsed)}
+          onClick={() => onCollapse(!collapsed)}
           className={cn(
             "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground",
             "transition-colors hover:bg-sidebar-accent hover:text-foreground",
