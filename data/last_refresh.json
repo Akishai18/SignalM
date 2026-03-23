@@ -1,7 +1,7 @@
 {
-  "last_refresh_utc": "2026-03-22T23:02:50.056093+00:00",
-  "completed_utc": "2026-03-22T23:03:00.505702+00:00",
-  "data_through": "2026-03-20",
+  "last_refresh_utc": "2026-03-23T08:55:26.202983+00:00",
+  "completed_utc": "2026-03-23T08:55:35.919682+00:00",
+  "data_through": "2026-03-23",
   "total_rows_added": 13,
   "tickers_updated": [
     "SPY",
@@ -25,6 +25,6 @@
     "IWM"
   ],
   "index_regimes_failed": [],
-  "pipeline_duration_seconds": 10.4,
+  "pipeline_duration_seconds": 9.7,
   "success": true
 }
