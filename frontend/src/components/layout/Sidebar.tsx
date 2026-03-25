@@ -1,5 +1,5 @@
 import React from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Target,
@@ -11,10 +11,11 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  Zap,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "../ThemeToggle";
+import { useAuth } from "@/contexts/AuthContext";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
@@ -33,6 +34,13 @@ interface SidebarProps {
 }
 
 export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
+  const { signOut, user } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/auth", { replace: true });
+  };
 
   return (
     <aside
@@ -45,7 +53,7 @@ export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
       {/* Logo */}
       <div className="flex h-16 items-center justify-between border-b border-border px-4">
         <div className={cn("flex items-center gap-3", collapsed && "justify-center w-full")}>
-          <Zap className="h-7 w-7 text-primary animate-pulse-glow-icon" />
+          <img src="/logo.png" alt="SignalM" className="h-12 w-12 object-contain pb-2.5" style={{ filter: 'drop-shadow(0 0 6px rgba(0,229,160,0.5))' }} />
           {!collapsed && (
             <span className="font-semibold text-lg tracking-tight">
               <span className="text-gradient">SignalM</span>
@@ -97,7 +105,25 @@ export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
           )}
           <ThemeToggle />
         </div>
-        
+
+        {/* User + sign out */}
+        {!collapsed && user?.email && (
+          <div className="px-3 py-1">
+            <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+          </div>
+        )}
+        <button
+          onClick={handleSignOut}
+          className={cn(
+            "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground",
+            "transition-colors hover:bg-red-500/10 hover:text-red-400",
+            collapsed && "justify-center px-2"
+          )}
+        >
+          <LogOut className="h-4 w-4 shrink-0" />
+          {!collapsed && <span>Sign out</span>}
+        </button>
+
         <button
           onClick={() => onCollapse(!collapsed)}
           className={cn(

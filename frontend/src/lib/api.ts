@@ -5,6 +5,13 @@
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
+import { getAccessToken } from '@/lib/supabase'
+
+async function authHeaders(): Promise<Record<string, string>> {
+  const token = await getAccessToken()
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
 // ============================================================================
 // TypeScript Types (matching backend Pydantic models)
 // ============================================================================
@@ -873,70 +880,97 @@ export const customDataApi = {
     const form = new FormData();
     form.append("file", file);
     form.append("dataset_name", datasetName);
+    const ah = await authHeaders();
     const response = await fetch(`${API_BASE_URL}/api/custom/upload`, {
       method: "POST",
+      headers: ah,  // no Content-Type — browser sets multipart boundary
       body: form,
     });
     return handleResponse(response);
   },
 
   async getStatus(sessionId: string): Promise<{ status: string; progress_pct: number; message: string; error?: string }> {
-    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}/status`);
+    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}/status`, {
+      headers: await authHeaders(),
+    });
     return handleResponse(response);
   },
 
   async getMeta(sessionId: string): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}/meta`);
+    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}/meta`, {
+      headers: await authHeaders(),
+    });
     return handleResponse(response);
   },
 
   async listDatasets(ids: string): Promise<any[]> {
-    const response = await fetch(`${API_BASE_URL}/api/custom/list?ids=${encodeURIComponent(ids)}`);
+    const response = await fetch(`${API_BASE_URL}/api/custom/list?ids=${encodeURIComponent(ids)}`, {
+      headers: await authHeaders(),
+    });
     return handleResponse(response);
   },
 
   async deleteDataset(sessionId: string): Promise<{ deleted: boolean }> {
-    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}`, { method: "DELETE" });
+    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}`, {
+      method: "DELETE",
+      headers: await authHeaders(),
+    });
     return handleResponse(response);
   },
 
   async getOverview(sessionId: string): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}/overview`);
+    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}/overview`, {
+      headers: await authHeaders(),
+    });
     return handleResponse(response);
   },
 
   async getHistory(sessionId: string): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}/history`);
+    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}/history`, {
+      headers: await authHeaders(),
+    });
     return handleResponse(response);
   },
 
   async getTransitions(sessionId: string): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}/transitions`);
+    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}/transitions`, {
+      headers: await authHeaders(),
+    });
     return handleResponse(response);
   },
 
   async getPerformance(sessionId: string): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}/performance`);
+    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}/performance`, {
+      headers: await authHeaders(),
+    });
     return handleResponse(response);
   },
 
   async getFeatures(sessionId: string): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}/features`);
+    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}/features`, {
+      headers: await authHeaders(),
+    });
     return handleResponse(response);
   },
 
   async getPredictions(sessionId: string): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}/predictions`);
+    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}/predictions`, {
+      headers: await authHeaders(),
+    });
     return handleResponse(response);
   },
 
   async predictHorizon(sessionId: string, horizon: number): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}/predict?horizon=${horizon}`);
+    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}/predict?horizon=${horizon}`, {
+      headers: await authHeaders(),
+    });
     return handleResponse(response);
   },
 
   async predictTrajectory(sessionId: string, horizon: number): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}/predict/trajectory?horizon=${horizon}`);
+    const response = await fetch(`${API_BASE_URL}/api/custom/${sessionId}/predict/trajectory?horizon=${horizon}`, {
+      headers: await authHeaders(),
+    });
     return handleResponse(response);
   },
 };

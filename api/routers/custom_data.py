@@ -13,7 +13,7 @@ from typing import Optional
 
 import sys
 import pandas as pd
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 
 # Ensure src/ is importable (for regime.* imports within the pipeline)
@@ -22,6 +22,7 @@ if _src_path not in sys.path:
     sys.path.insert(0, _src_path)
 
 from api.utils import storage
+from api.dependencies.auth import get_current_user
 
 router = APIRouter(prefix="/api/custom", tags=["custom_data"])
 
@@ -32,6 +33,7 @@ router = APIRouter(prefix="/api/custom", tags=["custom_data"])
 async def upload_dataset(
     file: UploadFile = File(...),
     dataset_name: str = Form(...),
+    current_user: dict = Depends(get_current_user),
 ):
     """Accept a CSV/Excel/JSON file, kick off background analysis."""
     allowed_ext = {".csv", ".xlsx", ".xls", ".json"}
@@ -57,13 +59,14 @@ async def upload_dataset(
         "status": "pending", "progress_pct": 0, "message": "Queued for analysis…"
     })
 
-    # Write initial metadata
+    # Write initial metadata (includes user_id for ownership)
     storage.write_json(f"{session_id}/results/dataset_meta.json", {
         "session_id": session_id,
         "dataset_name": dataset_name,
         "original_filename": file.filename,
         "file_size_bytes": len(contents),
         "created_at": datetime.now(timezone.utc).isoformat(),
+        "user_id": current_user["user_id"],
     })
 
     # Launch background analysis thread
@@ -93,10 +96,27 @@ def _run_analysis_thread(session_id: str, ext: str, contents: bytes):
             pass
 
 
+# ── Ownership helper ───────────────────────────────────────────────────────────
+
+def _check_ownership(session_id: str, user_id: str):
+    """Raise 403 if the session doesn't belong to this user."""
+    meta_path = f"{session_id}/results/dataset_meta.json"
+    if not storage.path_exists(meta_path):
+        raise HTTPException(status_code=404, detail="Dataset not found.")
+    meta = storage.read_json(meta_path)
+    stored_uid = meta.get("user_id")
+    if stored_uid is None:
+        # Legacy dataset uploaded before auth was added
+        raise HTTPException(status_code=403, detail="Dataset has no owner. Please re-upload.")
+    if stored_uid != user_id:
+        raise HTTPException(status_code=403, detail="Access denied.")
+
+
 # ── Status ────────────────────────────────────────────────────────────────────
 
 @router.get("/{session_id}/status")
-def get_status(session_id: str):
+def get_status(session_id: str, current_user: dict = Depends(get_current_user)):
+    _check_ownership(session_id, current_user["user_id"])
     path = f"{session_id}/results/analysis_status.json"
     if not storage.path_exists(path):
         raise HTTPException(status_code=404, detail="Dataset not found.")
@@ -106,7 +126,8 @@ def get_status(session_id: str):
 # ── Metadata ──────────────────────────────────────────────────────────────────
 
 @router.get("/{session_id}/meta")
-def get_meta(session_id: str):
+def get_meta(session_id: str, current_user: dict = Depends(get_current_user)):
+    _check_ownership(session_id, current_user["user_id"])
     path = f"{session_id}/results/dataset_meta.json"
     if not storage.path_exists(path):
         raise HTTPException(status_code=404, detail="Dataset not found.")
@@ -116,8 +137,8 @@ def get_meta(session_id: str):
 # ── List datasets ─────────────────────────────────────────────────────────────
 
 @router.get("/list")
-def list_datasets(ids: str = ""):
-    """Return metadata for all requested session IDs (comma-separated)."""
+def list_datasets(ids: str = "", current_user: dict = Depends(get_current_user)):
+    """Return metadata for all requested session IDs (comma-separated), filtered to caller's datasets."""
     if not ids:
         return []
     requested = [i.strip() for i in ids.split(",") if i.strip()]
@@ -129,6 +150,10 @@ def list_datasets(ids: str = ""):
             results.append({"session_id": sid, "exists": False})
             continue
         meta = storage.read_json(meta_path)
+        # Only return datasets owned by this user
+        if meta.get("user_id") != current_user["user_id"]:
+            results.append({"session_id": sid, "exists": False})
+            continue
         if storage.path_exists(status_path):
             status = storage.read_json(status_path)
             meta["status"] = status.get("status", "unknown")
@@ -141,7 +166,8 @@ def list_datasets(ids: str = ""):
 # ── Delete ────────────────────────────────────────────────────────────────────
 
 @router.delete("/{session_id}")
-def delete_dataset(session_id: str):
+def delete_dataset(session_id: str, current_user: dict = Depends(get_current_user)):
+    _check_ownership(session_id, current_user["user_id"])
     if not storage.path_exists(f"{session_id}/results/analysis_status.json"):
         raise HTTPException(status_code=404, detail="Dataset not found.")
     storage.delete_session(session_id)
@@ -179,7 +205,8 @@ def _read_labels_df(session_id: str) -> pd.DataFrame:
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.get("/{session_id}/overview")
-def get_overview(session_id: str):
+def get_overview(session_id: str, current_user: dict = Depends(get_current_user)):
+    _check_ownership(session_id, current_user["user_id"])
     _require_complete(session_id)
     meta = storage.read_json(f"{session_id}/results/dataset_meta.json")
     label_map = storage.read_json(f"{session_id}/results/regime_label_map.json")
@@ -205,7 +232,8 @@ def get_overview(session_id: str):
 
 
 @router.get("/{session_id}/history")
-def get_history(session_id: str):
+def get_history(session_id: str, current_user: dict = Depends(get_current_user)):
+    _check_ownership(session_id, current_user["user_id"])
     _require_complete(session_id)
     label_map = storage.read_json(f"{session_id}/results/regime_label_map.json")
     names = {int(k): v for k, v in label_map.get("names", {}).items()}
@@ -225,7 +253,8 @@ def get_history(session_id: str):
 
 
 @router.get("/{session_id}/transitions")
-def get_transitions(session_id: str):
+def get_transitions(session_id: str, current_user: dict = Depends(get_current_user)):
+    _check_ownership(session_id, current_user["user_id"])
     _require_complete(session_id)
     trans_data = storage.read_json(f"{session_id}/results/transition_matrix.json")
     stats = storage.read_json(f"{session_id}/results/regime_stats.json")
@@ -240,7 +269,8 @@ def get_transitions(session_id: str):
 
 
 @router.get("/{session_id}/performance")
-def get_performance(session_id: str):
+def get_performance(session_id: str, current_user: dict = Depends(get_current_user)):
+    _check_ownership(session_id, current_user["user_id"])
     _require_complete(session_id)
     stats = storage.read_json(f"{session_id}/results/regime_stats.json")
     label_map = storage.read_json(f"{session_id}/results/regime_label_map.json")
@@ -261,7 +291,8 @@ def get_performance(session_id: str):
 
 
 @router.get("/{session_id}/features")
-def get_features(session_id: str):
+def get_features(session_id: str, current_user: dict = Depends(get_current_user)):
+    _check_ownership(session_id, current_user["user_id"])
     _require_complete(session_id)
     labels_df = _read_labels_df(session_id)
     features_df = storage.read_csv(f"{session_id}/results/regime_features.csv",
@@ -280,7 +311,8 @@ def get_features(session_id: str):
 
 
 @router.get("/{session_id}/predictions")
-def get_predictions(session_id: str):
+def get_predictions(session_id: str, current_user: dict = Depends(get_current_user)):
+    _check_ownership(session_id, current_user["user_id"])
     _require_complete(session_id)
     preds = storage.read_json(f"{session_id}/results/predictions.json")
     label_map = storage.read_json(f"{session_id}/results/regime_label_map.json")
@@ -296,10 +328,15 @@ def get_predictions(session_id: str):
 # ── Custom-horizon prediction ─────────────────────────────────────────────────
 
 @router.get("/{session_id}/predict")
-def predict_custom_horizon(session_id: str, horizon: int = 30):
+def predict_custom_horizon(
+    session_id: str,
+    horizon: int = 30,
+    current_user: dict = Depends(get_current_user),
+):
     if horizon < 1 or horizon > 1095:
         raise HTTPException(status_code=400, detail="horizon must be 1–1095")
 
+    _check_ownership(session_id, current_user["user_id"])
     _require_complete(session_id)
     trans_data = storage.read_json(f"{session_id}/results/transition_matrix.json")
     stored = storage.read_json(f"{session_id}/results/predictions.json")
@@ -343,10 +380,15 @@ def predict_custom_horizon(session_id: str, horizon: int = 30):
 
 
 @router.get("/{session_id}/predict/trajectory")
-def predict_trajectory(session_id: str, horizon: int = 30):
+def predict_trajectory(
+    session_id: str,
+    horizon: int = 30,
+    current_user: dict = Depends(get_current_user),
+):
     if horizon < 1 or horizon > 1095:
         raise HTTPException(status_code=400, detail="horizon must be 1–1095")
 
+    _check_ownership(session_id, current_user["user_id"])
     _require_complete(session_id)
     trans_data = storage.read_json(f"{session_id}/results/transition_matrix.json")
     stored = storage.read_json(f"{session_id}/results/predictions.json")
