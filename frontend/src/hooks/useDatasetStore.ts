@@ -5,8 +5,6 @@
 import { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
 
-const STORAGE_KEY = "signalm_datasets";
-
 export interface StoredDataset {
   session_id: string;
   dataset_name: string;
@@ -18,25 +16,29 @@ export interface StoredDataset {
   date_range?: { start: string; end: string };
 }
 
-function readStorage(): StoredDataset[] {
+function storageKey(userId: string) {
+  return `signalm_datasets_${userId}`;
+}
+
+function readStorage(userId: string): StoredDataset[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey(userId));
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
   }
 }
 
-function writeStorage(datasets: StoredDataset[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(datasets));
+function writeStorage(userId: string, datasets: StoredDataset[]) {
+  localStorage.setItem(storageKey(userId), JSON.stringify(datasets));
 }
 
-export function useDatasetStore() {
-  const [datasets, setDatasets] = useState<StoredDataset[]>(readStorage);
+export function useDatasetStore(userId: string) {
+  const [datasets, setDatasets] = useState<StoredDataset[]>(() => readStorage(userId));
 
   // On mount: validate datasets against the server
   useEffect(() => {
-    const stored = readStorage();
+    const stored = readStorage(userId);
     if (stored.length === 0) return;
     const ids = stored.map((d) => d.session_id).join(",");
     api.customData
@@ -54,24 +56,24 @@ export function useDatasetStore() {
             date_range: serverEntry.date_range ?? d.date_range,
           };
         });
-        writeStorage(updated);
+        writeStorage(userId, updated);
         setDatasets(updated);
       })
       .catch(() => {
         // Server unreachable — mark all as expired
         const updated = stored.map((d) => ({ ...d, status: "expired" as const }));
-        writeStorage(updated);
+        writeStorage(userId, updated);
         setDatasets(updated);
       });
-  }, []);
+  }, [userId]);
 
   const addDataset = useCallback((meta: StoredDataset) => {
     setDatasets((prev) => {
       const next = [meta, ...prev];
-      writeStorage(next);
+      writeStorage(userId, next);
       return next;
     });
-  }, []);
+  }, [userId]);
 
   const removeDataset = useCallback(async (session_id: string) => {
     try {
@@ -81,10 +83,10 @@ export function useDatasetStore() {
     }
     setDatasets((prev) => {
       const next = prev.filter((d) => d.session_id !== session_id);
-      writeStorage(next);
+      writeStorage(userId, next);
       return next;
     });
-  }, []);
+  }, [userId]);
 
   const updateDataset = useCallback(
     (session_id: string, updates: Partial<StoredDataset>) => {
@@ -92,11 +94,11 @@ export function useDatasetStore() {
         const next = prev.map((d) =>
           d.session_id === session_id ? { ...d, ...updates } : d
         );
-        writeStorage(next);
+        writeStorage(userId, next);
         return next;
       });
     },
-    []
+    [userId]
   );
 
   return { datasets, addDataset, removeDataset, updateDataset };
