@@ -3,6 +3,11 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import AuthPage from "./pages/AuthPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
+import PreviewEntryPage from "./pages/PreviewEntryPage";
 import Index from "./pages/Index";
 import PredictionsPageNew from "./pages/PredictionsPageNew";
 import CorrelationPage from "./pages/CorrelationPage";
@@ -17,26 +22,37 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/predictions" element={<PredictionsPageNew />} />
-          <Route path="/correlation" element={<CorrelationPage />} />
-          <Route path="/volatility" element={<VolatilityPage />} />
-          <Route path="/factors" element={<FactorsPage />} />
-          <Route path="/upload" element={<UploadPage />} />
-          <Route path="/upload/:datasetId" element={<DatasetDashboardPage />} />
-          <Route path="/backtester" element={<BacktesterPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            {/* Public */}
+            <Route path="/auth" element={<AuthPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/preview/sm2026" element={<PreviewEntryPage />} />
+
+            {/* Protected — all dashboard routes */}
+            <Route element={<ProtectedRoute />}>
+              <Route path="/" element={<Index />} />
+              <Route path="/predictions" element={<PredictionsPageNew />} />
+              <Route path="/correlation" element={<CorrelationPage />} />
+              <Route path="/volatility" element={<VolatilityPage />} />
+              <Route path="/factors" element={<FactorsPage />} />
+              <Route path="/upload" element={<UploadPage />} />
+              <Route path="/upload/:datasetId" element={<DatasetDashboardPage />} />
+              <Route path="/backtester" element={<BacktesterPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+            </Route>
+
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </AuthProvider>
 );
 
 export default App;

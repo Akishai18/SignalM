@@ -1,5 +1,5 @@
 import React from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Target,
@@ -11,10 +11,12 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  Zap,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "../ThemeToggle";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
@@ -27,12 +29,31 @@ const navItems = [
   { icon: Settings, label: "Settings", path: "/settings" },
 ];
 
+const GUEST_LOCKED = new Set(["/upload"]);
+
 interface SidebarProps {
   collapsed: boolean;
   onCollapse: (collapsed: boolean) => void;
 }
 
 export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
+  const { signOut, user, isGuest, isDemoMode, exitGuestMode } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const handleSignOut = async () => {
+    exitGuestMode();
+    await signOut();
+    navigate("/auth", { replace: true });
+  };
+
+  const handleGuestLockedClick = (e: React.MouseEvent, label: string) => {
+    e.preventDefault();
+    toast({
+      title: "Account required",
+      description: `Sign up or log in to access ${label}.`,
+    });
+  };
 
   return (
     <aside
@@ -45,7 +66,7 @@ export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
       {/* Logo */}
       <div className="flex h-16 items-center justify-between border-b border-border px-4">
         <div className={cn("flex items-center gap-3", collapsed && "justify-center w-full")}>
-          <Zap className="h-7 w-7 text-primary animate-pulse-glow-icon" />
+          <img src="/logo.png" alt="SignalM" className="h-12 w-12 object-contain pb-2.5" style={{ filter: 'drop-shadow(0 0 6px rgba(0,229,160,0.5))' }} />
           {!collapsed && (
             <span className="font-semibold text-lg tracking-tight">
               <span className="text-gradient">SignalM</span>
@@ -54,39 +75,68 @@ export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
         </div>
       </div>
 
+      {/* Guest banner */}
+      {isGuest && !isDemoMode && !collapsed && (
+        <div className="mx-2 mt-3 rounded-lg border border-dashed border-white/10 bg-white/5 px-3 py-2 text-center">
+          <p className="text-xs text-muted-foreground">Browsing as guest</p>
+          <button
+            onClick={() => { exitGuestMode(); navigate("/auth"); }}
+            className="mt-1 text-xs font-medium text-[#00e5a0] hover:underline"
+          >
+            Sign up for full access →
+          </button>
+        </div>
+      )}
+
       {/* Navigation */}
       <nav className="flex-1 space-y-1 px-2 py-4">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            className={({ isActive }) =>
-              cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
-                "hover:bg-sidebar-accent group relative overflow-hidden",
-                isActive
-                  ? "bg-primary/10 text-primary neon-border"
-                  : "text-sidebar-foreground/70 hover:text-sidebar-foreground",
+        {navItems.map((item) => {
+          const locked = isGuest && !isDemoMode && GUEST_LOCKED.has(item.path);
+          return locked ? (
+            <button
+              key={item.path}
+              onClick={(e) => handleGuestLockedClick(e, item.label)}
+              className={cn(
+                "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium",
+                "cursor-not-allowed opacity-40",
                 collapsed && "justify-center px-2"
-              )
-            }
-          >
-            {({ isActive }) => (
-              <>
-                <item.icon
-                  className={cn(
-                    "h-5 w-5 shrink-0 transition-transform duration-200 group-hover:scale-110",
-                    isActive && "text-primary"
+              )}
+            >
+              <item.icon className="h-5 w-5 shrink-0" />
+              {!collapsed && <span>{item.label}</span>}
+            </button>
+          ) : (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                  "hover:bg-sidebar-accent group relative overflow-hidden",
+                  isActive
+                    ? "bg-primary/10 text-primary neon-border"
+                    : "text-sidebar-foreground/70 hover:text-sidebar-foreground",
+                  collapsed && "justify-center px-2"
+                )
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <item.icon
+                    className={cn(
+                      "h-5 w-5 shrink-0 transition-transform duration-200 group-hover:scale-110",
+                      isActive && "text-primary"
+                    )}
+                  />
+                  {!collapsed && <span>{item.label}</span>}
+                  {isActive && (
+                    <div className="absolute left-0 top-0 h-full w-0.5 bg-primary" />
                   )}
-                />
-                {!collapsed && <span>{item.label}</span>}
-                {isActive && (
-                  <div className="absolute left-0 top-0 h-full w-0.5 bg-primary" />
-                )}
-              </>
-            )}
-          </NavLink>
-        ))}
+                </>
+              )}
+            </NavLink>
+          );
+        })}
       </nav>
 
       {/* Footer */}
@@ -97,7 +147,34 @@ export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
           )}
           <ThemeToggle />
         </div>
-        
+
+        {/* User email / guest / demo label */}
+        {!collapsed && (
+          <div className="px-3 py-1">
+            {user?.email ? (
+              <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+            ) : isDemoMode ? (
+              <p className="text-xs text-muted-foreground italic">Demo mode</p>
+            ) : isGuest ? (
+              <p className="text-xs text-muted-foreground italic">Guest</p>
+            ) : null}
+          </div>
+        )}
+
+        {!isDemoMode && (
+          <button
+            onClick={handleSignOut}
+            className={cn(
+              "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground",
+              "transition-colors hover:bg-red-500/10 hover:text-red-400",
+              collapsed && "justify-center px-2"
+            )}
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            {!collapsed && <span>{isGuest ? "Sign in" : "Sign out"}</span>}
+          </button>
+        )}
+
         <button
           onClick={() => onCollapse(!collapsed)}
           className={cn(

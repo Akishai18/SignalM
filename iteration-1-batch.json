@@ -1,0 +1,44 @@
+[
+  {
+    "company": "SignalM",
+    "prompt": "minimal fintech logo with an ECG heartbeat pulse waveform integrated into the letter M, dark background, professional",
+    "style": "modern",
+    "colors": ["#00e5a0", "#ffffff"],
+    "quality": "standard"
+  },
+  {
+    "company": "SignalM",
+    "prompt": "abstract signal wave forming the letter M, clean geometric lines, quantitative finance platform, sleek and technical",
+    "style": "minimal",
+    "colors": ["#00e5a0", "#0f1117"],
+    "quality": "standard"
+  },
+  {
+    "company": "SignalM",
+    "prompt": "bold S and M monogram with market chart signal line, dark fintech aesthetic, institutional grade",
+    "style": "bold",
+    "colors": ["#00e5a0", "#1a2035"],
+    "quality": "standard"
+  },
+  {
+    "company": "SignalM",
+    "prompt": "market regime detection platform logo, candlestick or waveform icon beside wordmark SignalM, minimal dark tech",
+    "style": "modern",
+    "colors": ["#00e5a0", "#ffffff", "#0f1117"],
+    "quality": "standard"
+  },
+  {
+    "company": "SignalM",
+    "prompt": "geometric M shape constructed from signal bars or frequency waves, teal mint accent on dark, quantitative trading platform",
+    "style": "geometric",
+    "colors": ["#00e5a0", "#161b27"],
+    "quality": "standard"
+  },
+  {
+    "company": "SignalM",
+    "prompt": "clean wordmark SignalM with a small glowing dot or pulse icon, Bloomberg terminal inspired, professional finance",
+    "style": "minimal",
+    "colors": ["#00e5a0", "#ffffff"],
+    "quality": "standard"
+  }
+]
