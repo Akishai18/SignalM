@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import AuthPage from "./pages/AuthPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import PreviewEntryPage from "./pages/PreviewEntryPage";
 import Index from "./pages/Index";
 import PredictionsPageNew from "./pages/PredictionsPageNew";
 import CorrelationPage from "./pages/CorrelationPage";
@@ -31,6 +32,7 @@ const App = () => (
             {/* Public */}
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/preview/sm2026" element={<PreviewEntryPage />} />
 
             {/* Protected — all dashboard routes */}
             <Route element={<ProtectedRoute />}>

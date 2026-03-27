@@ -2,7 +2,7 @@ import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 
 export default function ProtectedRoute() {
-  const { user, loading } = useAuth()
+  const { user, loading, isGuest, isDemoMode } = useAuth()
 
   if (loading) {
     return (
@@ -15,7 +15,7 @@ export default function ProtectedRoute() {
     )
   }
 
-  if (!user) {
+  if (!user && !isGuest && !isDemoMode) {
     return <Navigate to="/auth" replace />
   }
 

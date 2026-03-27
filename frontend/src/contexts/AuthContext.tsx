@@ -6,6 +6,11 @@ interface AuthContextValue {
   user: User | null
   session: Session | null
   loading: boolean
+  isGuest: boolean
+  isDemoMode: boolean
+  enterGuestMode: () => void
+  exitGuestMode: () => void
+  enterDemoMode: () => Promise<void>
   signIn: (email: string, password: string) => Promise<AuthError | null>
   signUp: (email: string, password: string) => Promise<AuthError | null>
   signInWithGoogle: () => Promise<void>
@@ -16,10 +21,15 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+const GUEST_KEY = 'signalm_guest'
+const DEMO_KEY = 'signalm_demo'
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isGuest, setIsGuest] = useState(() => localStorage.getItem(GUEST_KEY) === 'true')
+  const [isDemoMode, setIsDemoMode] = useState(() => sessionStorage.getItem(DEMO_KEY) === 'true')
 
   useEffect(() => {
     supabase.auth.getSession()
@@ -37,6 +47,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
       setUser(session?.user ?? null)
+      if (session?.user) {
+        // Clear guest mode on any real sign-in
+        setIsGuest(false)
+        localStorage.removeItem(GUEST_KEY)
+        // Clear demo mode if this is a real user (not the demo account)
+        const demoEmail = (import.meta.env.VITE_DEMO_EMAIL as string | undefined)?.trim()
+        if (session.user.email !== demoEmail) {
+          sessionStorage.removeItem(DEMO_KEY)
+          setIsDemoMode(false)
+        }
+      }
     })
 
     return () => subscription.unsubscribe()
@@ -59,7 +80,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }
 
+  const enterDemoMode = async () => {
+    const email = import.meta.env.VITE_DEMO_EMAIL as string
+    const password = import.meta.env.VITE_DEMO_PASSWORD as string
+    await supabase.auth.signInWithPassword({ email, password })
+    sessionStorage.setItem(DEMO_KEY, 'true')
+    setIsDemoMode(true)
+  }
+
+  const enterGuestMode = () => {
+    localStorage.setItem(GUEST_KEY, 'true')
+    setIsGuest(true)
+  }
+
+  const exitGuestMode = () => {
+    localStorage.removeItem(GUEST_KEY)
+    setIsGuest(false)
+  }
+
   const signOut = async (): Promise<void> => {
+    exitGuestMode()
     await supabase.auth.signOut()
   }
 
@@ -76,7 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signInWithGoogle, signOut, sendPasswordReset, updatePassword }}>
+    <AuthContext.Provider value={{ user, session, loading, isGuest, isDemoMode, enterGuestMode, exitGuestMode, enterDemoMode, signIn, signUp, signInWithGoogle, signOut, sendPasswordReset, updatePassword }}>
       {children}
     </AuthContext.Provider>
   )

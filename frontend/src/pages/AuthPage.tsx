@@ -67,7 +67,7 @@ export default function AuthPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [signUpSuccess, setSignUpSuccess] = useState(false)
   const [forgotSent, setForgotSent] = useState(false)
-  const { signIn, signUp, signInWithGoogle, sendPasswordReset } = useAuth()
+  const { signIn, signUp, signInWithGoogle, sendPasswordReset, enterGuestMode } = useAuth()
   const navigate = useNavigate()
 
   const signInForm = useForm<SignInForm>({
@@ -378,6 +378,24 @@ export default function AuthPage() {
                       </>
                     )}
                   </p>
+                )}
+
+                {/* Guest access */}
+                {mode !== 'forgot' && (
+                  <div className="relative flex items-center gap-3">
+                    <div className="h-px flex-1 bg-gray-200" />
+                    <span className="text-xs text-gray-400">or</span>
+                    <div className="h-px flex-1 bg-gray-200" />
+                  </div>
+                )}
+                {mode !== 'forgot' && (
+                  <button
+                    type="button"
+                    onClick={() => { enterGuestMode(); navigate('/') }}
+                    className="w-full rounded-lg border border-gray-200 bg-white py-2.5 text-sm text-gray-500 transition-colors hover:border-gray-300 hover:text-gray-700"
+                  >
+                    Continue as guest
+                  </button>
                 )}
 
               </div>
