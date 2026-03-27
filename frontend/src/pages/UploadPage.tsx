@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useDatasetStore } from "@/hooks/useDatasetStore";
 import { DatasetCard } from "@/components/custom-data/DatasetCard";
 import api from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 const MAX_VISIBLE = 4;
 
@@ -15,7 +16,9 @@ export default function UploadPage() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [showAllOpen, setShowAllOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { datasets, addDataset, removeDataset, updateDataset } = useDatasetStore();
+  const { user, isDemoMode } = useAuth();
+  const userId = user?.id ?? (isDemoMode ? 'demo' : 'guest');
+  const { datasets, addDataset, removeDataset, updateDataset } = useDatasetStore(userId);
 
   const visibleDatasets = datasets.slice(0, MAX_VISIBLE);
   const hiddenCount = Math.max(0, datasets.length - MAX_VISIBLE);
