@@ -127,40 +127,144 @@ export default function AuthPage() {
       {/* ── Left panel ─────────────────────────────────────────────────────── */}
       <div className="relative hidden w-[60%] flex-col overflow-hidden bg-[#07090f] lg:flex">
 
-        {/* Ambient glow blobs */}
+        {/* Keyframes */}
+        <style>{`
+          @keyframes streakFlow1 {
+            0%, 100% { background-position: 0% 0%; }
+            50%       { background-position: 0% 100%; }
+          }
+          @keyframes streakFlow2 {
+            0%, 100% { background-position: 0% 100%; }
+            50%       { background-position: 0% 0%; }
+          }
+          @keyframes bloomCycle {
+            0%, 100% { opacity: 0.07; }
+            50%       { opacity: 0.18; }
+          }
+          @keyframes warmBloom {
+            0%, 100% { opacity: 0; }
+            40%, 60% { opacity: 1; }
+          }
+          @keyframes rodSway1 {
+            0%   { transform: rotate(13deg) translateX(-40px); }
+            25%  { transform: rotate(21deg) translateX(25px); }
+            55%  { transform: rotate(17deg) translateX(80px); }
+            80%  { transform: rotate(23deg) translateX(10px); }
+            100% { transform: rotate(13deg) translateX(-40px); }
+          }
+          @keyframes rodSway2 {
+            0%   { transform: rotate(22deg) translateX(30px); }
+            30%  { transform: rotate(15deg) translateX(-50px); }
+            60%  { transform: rotate(25deg) translateX(20px); }
+            85%  { transform: rotate(18deg) translateX(90px); }
+            100% { transform: rotate(22deg) translateX(30px); }
+          }
+          @keyframes rodSway3 {
+            0%   { transform: rotate(18deg) translateX(10px); }
+            35%  { transform: rotate(26deg) translateX(70px); }
+            65%  { transform: rotate(14deg) translateX(-30px); }
+            100% { transform: rotate(18deg) translateX(10px); }
+          }
+          @keyframes spotlightPulse {
+            0%, 100% { opacity: 0.55; transform: scale(1); }
+            50%       { opacity: 0.8;  transform: scale(1.08); }
+          }
+          @keyframes spinBorder1 {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
+          }
+          @keyframes spinBorder2 {
+            from { transform: rotate(120deg); }
+            to   { transform: rotate(480deg); }
+          }
+          @keyframes spinBorder3 {
+            from { transform: rotate(240deg); }
+            to   { transform: rotate(600deg); }
+          }
+        `}</style>
+
+        {/* Background */}
         <div className="pointer-events-none absolute inset-0" aria-hidden="true">
-          {/* Large bottom-left bloom */}
+
+          {/* Bottom-left spotlight */}
+          <div style={{
+            position: 'absolute', bottom: '-15%', left: '-10%',
+            width: '60%', height: '60%',
+            background: 'radial-gradient(ellipse at 30% 70%, rgba(0,229,160,0.18) 0%, rgba(0,180,216,0.08) 40%, transparent 70%)',
+            animation: 'spotlightPulse 10s ease-in-out infinite',
+            filter: 'blur(2px)',
+          }} />
+
+          {/* Static bottom-left green bloom */}
           <div style={{
             position: 'absolute', bottom: '-10%', left: '-5%',
             width: '55%', height: '55%',
             background: 'radial-gradient(ellipse, rgba(0,229,160,0.07) 0%, transparent 70%)',
+            animation: 'bloomCycle 14s ease-in-out infinite',
           }} />
-          {/* Mid-right secondary bloom */}
+
+          {/* Warm amber bloom behind streaks — fades in halfway through cycle */}
           <div style={{
-            position: 'absolute', top: '20%', right: '-5%',
-            width: '40%', height: '50%',
-            background: 'radial-gradient(ellipse, rgba(0,180,216,0.05) 0%, transparent 70%)',
+            position: 'absolute', top: '0%', left: '35%',
+            width: '65%', height: '100%',
+            background: 'radial-gradient(ellipse at 60% 40%, rgba(240,140,0,0.13) 0%, transparent 65%)',
+            animation: 'warmBloom 14s ease-in-out infinite',
           }} />
-          {/* Diagonal cyan streak */}
+
+          {/* Wide diffuse streak glow — swaying with main rod */}
+          <div style={{
+            position: 'absolute', top: '-10%', left: '48%',
+            width: '160px', height: '130%',
+            background: 'linear-gradient(to right, transparent, rgba(0,229,160,0.04) 50%, transparent)',
+            animation: 'rodSway1 22s ease-in-out infinite',
+          }} />
+
+          {/* Main streak — color flows + sways */}
           <div style={{
             position: 'absolute', top: '-10%', left: '56%',
             width: '2px', height: '130%',
-            background: 'linear-gradient(to bottom, transparent 0%, #00e5a0 35%, #00b4d8 65%, transparent 100%)',
-            transform: 'rotate(20deg)', opacity: 0.55, filter: 'blur(0.5px)',
+            backgroundImage: `linear-gradient(to bottom,
+              transparent 0%,
+              #00e5a0 10%, #00b4d8 22%, #00e5a0 34%,
+              transparent 44%,
+              transparent 56%,
+              #f0a500 66%, #ffd166 78%, #f0a500 90%,
+              transparent 100%)`,
+            backgroundSize: '100% 250%',
+            opacity: 0.9,
+            filter: 'blur(0.5px)',
+            animation: 'streakFlow1 14s ease-in-out infinite, rodSway1 22s ease-in-out infinite',
           }} />
-          {/* Diagonal gold streak */}
+
+          {/* Thin parallel streak — offset sway phase */}
           <div style={{
-            position: 'absolute', top: '-10%', left: '61%',
+            position: 'absolute', top: '-10%', left: '59%',
             width: '1px', height: '130%',
-            background: 'linear-gradient(to bottom, transparent 0%, #f0a500 42%, #ffd166 68%, transparent 100%)',
-            transform: 'rotate(20deg)', opacity: 0.4,
+            backgroundImage: `linear-gradient(to bottom,
+              transparent 0%,
+              rgba(0,229,160,0.6) 10%, rgba(0,180,216,0.6) 22%, rgba(0,229,160,0.6) 34%,
+              transparent 44%,
+              transparent 56%,
+              rgba(240,165,0,0.6) 66%, rgba(255,209,102,0.6) 78%, rgba(240,165,0,0.6) 90%,
+              transparent 100%)`,
+            backgroundSize: '100% 250%',
+            animation: 'streakFlow1 14s ease-in-out infinite, rodSway2 28s ease-in-out infinite 4s',
           }} />
-          {/* Wide diffuse glow behind streaks */}
+
+          {/* Gold accent streak — opposite color phase, independent sway */}
           <div style={{
-            position: 'absolute', top: '-10%', left: '50%',
-            width: '120px', height: '130%',
-            background: 'linear-gradient(to bottom, transparent, rgba(0,229,160,0.03) 40%, transparent)',
-            transform: 'rotate(20deg)',
+            position: 'absolute', top: '-10%', left: '63%',
+            width: '1px', height: '130%',
+            backgroundImage: `linear-gradient(to bottom,
+              transparent 0%,
+              #f0a500 10%, #ffd166 22%, #f0a500 34%,
+              transparent 44%,
+              transparent 56%,
+              #00e5a0 66%, #00b4d8 78%, #00e5a0 90%,
+              transparent 100%)`,
+            backgroundSize: '100% 250%',
+            opacity: 0.7,
+            animation: 'streakFlow2 14s ease-in-out infinite, rodSway3 18s ease-in-out infinite 8s',
           }} />
         </div>
 
@@ -177,11 +281,22 @@ export default function AuthPage() {
 
           {/* Hero copy */}
           <div className="mt-auto pb-4">
-            <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-sm text-gray-300">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#00e5a0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-              </svg>
-              Market Intelligence Platform
+            <div className="mb-8" style={{ display: 'inline-flex', position: 'relative', padding: '1px', borderRadius: '9999px', overflow: 'hidden' }}>
+              {/* Spinning border beam */}
+              <div style={{
+                position: 'absolute',
+                width: '250%', height: '250%',
+                top: '-75%', left: '-75%',
+                background: 'conic-gradient(from 0deg, transparent 0deg, #00e5a0 25deg, #00b4d8 40deg, transparent 55deg, transparent 360deg)',
+                animation: 'spinBorder1 4s linear infinite',
+                opacity: 0.9,
+              }} />
+              <div className="relative z-10 inline-flex items-center gap-2 px-4 py-1.5 text-sm text-gray-300" style={{ borderRadius: '9999px', background: 'rgba(7,9,15,0.85)' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#00e5a0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg>
+                Market Intelligence Platform
+              </div>
             </div>
 
             <h1 className="text-5xl font-bold leading-tight tracking-tight text-white">
@@ -197,18 +312,60 @@ export default function AuthPage() {
 
             <p className="mt-5 max-w-sm text-base leading-relaxed text-gray-400">
               Analyze volatility, correlations, and latent factors driving
-              the S&P 500 — all in one diagnostic toolkit.
+              indices and custom portfolio data — all in one diagnostic toolkit.
             </p>
 
             <div className="mt-10 flex flex-wrap gap-3">
               {[
-                { label: 'Volatility Regimes', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg> },
-                { label: 'Correlation Analysis', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> },
-                { label: 'Factor Decomposition', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> },
-              ].map(({ icon, label }) => (
-                <div key={label} className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-gray-300">
-                  <span className="text-[#00e5a0]">{icon}</span>
-                  {label}
+                {
+                  label: 'Volatility Regimes',
+                  spinAnim: 'spinBorder1 5s linear infinite',
+                  conicColor: '#00e5a0',
+                  icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
+                },
+                {
+                  label: 'Correlation Analysis',
+                  spinAnim: 'spinBorder2 6s linear infinite',
+                  conicColor: '#00b4d8',
+                  icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
+                },
+                {
+                  label: 'Factor Decomposition',
+                  spinAnim: 'spinBorder3 7s linear infinite',
+                  conicColor: '#f0a500',
+                  icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
+                },
+              ].map(({ icon, label, spinAnim, conicColor }) => (
+                /* Outer wrapper — clips to pill shape, padding = border width */
+                <div
+                  key={label}
+                  style={{
+                    position: 'relative',
+                    padding: '1px',
+                    borderRadius: '9999px',
+                    overflow: 'hidden',
+                    display: 'inline-flex',
+                  }}
+                >
+                  {/* Spinning conic gradient — only the 1px edge shows through */}
+                  <div style={{
+                    position: 'absolute',
+                    width: '250%',
+                    height: '250%',
+                    top: '-75%',
+                    left: '-75%',
+                    background: `conic-gradient(from 0deg, transparent 0deg, ${conicColor} 30deg, transparent 60deg, transparent 360deg)`,
+                    animation: spinAnim,
+                    opacity: 0.85,
+                  }} />
+                  {/* Inner content — covers center, only border edge of outer shows */}
+                  <div
+                    className="relative z-10 flex items-center gap-2 px-4 py-2 text-sm text-gray-300"
+                    style={{ borderRadius: '9999px', background: 'rgba(7,9,15,0.85)' }}
+                  >
+                    <span className="text-[#00e5a0]">{icon}</span>
+                    {label}
+                  </div>
                 </div>
               ))}
             </div>
