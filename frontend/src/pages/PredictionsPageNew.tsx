@@ -12,6 +12,7 @@ import BacktestChart from '@/components/predictions/BacktestChart';
 import ConfidenceSparklines from '@/components/predictions/ConfidenceSparklines';
 import WhatIfScenario from '@/components/predictions/WhatIfScenario';
 import ExportButton from '@/components/predictions/ExportButton';
+import { computeWeightedEnsemble } from '@/lib/ensemble';
 
 const REGIME_NAMES = ['Calm', 'Crisis', 'Elevated Stress', 'Transition'];
 const REGIME_COLORS = {
@@ -62,39 +63,30 @@ const PredictionsPageNew = () => {
   const pred7d = predictions?.['7d'];
   const pred30d = predictions?.['30d'];
 
+  // Reweighted ensembles (HMM 70%, RF 15%, XGB 15%)
+  const ensemble1d = pred1d ? computeWeightedEnsemble(pred1d.individual_models) : null;
+  const ensemble7d = pred7d ? computeWeightedEnsemble(pred7d.individual_models) : null;
+  const ensemble30d = pred30d ? computeWeightedEnsemble(pred30d.individual_models) : null;
+
   // Check for regime divergence across indices
   const divergenceDetected = comparisonData && (() => {
     const regimes = Object.values(comparisonData.indices).map((idx: any) => idx['1d']?.predicted_regime);
     return new Set(regimes).size > 1;
   })();
 
-  // Calculate ensemble agreement (excluding Markov)
-  const ensembleAgreement = pred1d ? (() => {
+  // Calculate ensemble agreement against reweighted ensemble (excluding Markov)
+  const ensembleAgreement = pred1d && ensemble1d ? (() => {
     const filteredModels = pred1d.individual_models.filter(m => !m.model_name.toLowerCase().includes('markov'));
-    const individualPredictions = filteredModels.map(m => m.predicted_regime);
-    const ensemblePrediction = pred1d.ensemble.predicted_regime;
-    const agreement = individualPredictions.filter(r => r === ensemblePrediction).length;
+    const agreement = filteredModels.filter(m => m.predicted_regime === ensemble1d.predicted_regime).length;
     return filteredModels.length > 0 ? (agreement / filteredModels.length) * 100 : 0;
   })() : 0;
 
-  // Best model from accuracy data (excluding Markov, averaged across horizons)
-  const bestModel = (() => {
+  // HMM mean confidence averaged across horizons
+  const hmmConfidence = (() => {
     if (!accuracyData?.accuracies) return undefined;
-    const filtered = accuracyData.accuracies.filter(m => !m.model_name.toLowerCase().includes('markov'));
-    // Group by model name and compute average accuracy
-    const modelAvgs: Record<string, { total: number; count: number }> = {};
-    filtered.forEach(m => {
-      if (!modelAvgs[m.model_name]) modelAvgs[m.model_name] = { total: 0, count: 0 };
-      modelAvgs[m.model_name].total += m.train_accuracy;
-      modelAvgs[m.model_name].count += 1;
-    });
-    let bestName = '';
-    let bestAvg = 0;
-    Object.entries(modelAvgs).forEach(([name, { total, count }]) => {
-      const avg = total / count;
-      if (avg > bestAvg) { bestAvg = avg; bestName = name; }
-    });
-    return bestName ? { model_name: bestName, train_accuracy: bestAvg } : undefined;
+    const hmmEntries = accuracyData.accuracies.filter(m => m.model_name.toLowerCase().includes('hmm'));
+    if (!hmmEntries.length) return undefined;
+    return hmmEntries.reduce((sum, m) => sum + m.mean_confidence, 0) / hmmEntries.length;
   })();
 
   return (
@@ -154,18 +146,18 @@ const PredictionsPageNew = () => {
         {/* Summary Metrics */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <MetricCard
-            title="Best Model"
-            value={bestModel?.model_name || 'Loading...'}
-            change={bestModel ? bestModel.train_accuracy * 100 : undefined}
-            changeLabel="accuracy"
+            title="Model"
+            value="HMM"
+            change={hmmConfidence ? hmmConfidence * 100 : undefined}
+            changeLabel="avg confidence"
             icon={<Target className="h-5 w-5" />}
             variant="neon"
             educational={{
-              title: "Best Model",
-              whatItIs: "The ML model with the highest average accuracy across all forecast horizons (1-day, 7-day, 30-day) for the selected index. Models include HMM, Random Forest, and XGBoost.",
-              whyItMatters: "Different models excel at different prediction tasks. Knowing which model performs best helps you gauge the reliability of the ensemble forecast and understand which approach captures market dynamics most effectively.",
-              howToRead: "The model name shown is the top performer. The percentage indicates its average accuracy across all horizons. Higher accuracy means the model correctly predicted the market regime more often during backtesting.",
-              actionableInsight: "If the best model has high accuracy (>80%), the ensemble predictions are likely reliable. If accuracy is lower, treat forecasts with more caution.",
+              title: "Primary Model: HMM",
+              whatItIs: "Hidden Markov Model — a probabilistic sequence model that treats market regimes as hidden states evolving over time.",
+              whyItMatters: "Unlike RF/XGBoost which predict regimes from features alone, HMM explicitly models state transitions: P(next regime | current regime). This means it accounts for where the market is right now, not just what features look like.",
+              howToRead: "The percentage shown is HMM's average accuracy across all forecast horizons. Because HMM conditions on the current regime state, it is significantly more responsive during stress periods than tree-based models.",
+              actionableInsight: "HMM predictions are most reliable during regime transitions and stress periods. RF/XGBoost tend to anchor toward Calm due to class imbalance in historical data.",
               variant: "neon",
             }}
           />
@@ -186,7 +178,7 @@ const PredictionsPageNew = () => {
           />
           <MetricCard
             title="1-Day Confidence"
-            value={pred1d ? `${(pred1d.ensemble.confidence * 100).toFixed(1)}%` : '...'}
+            value={ensemble1d ? `${(ensemble1d.confidence * 100).toFixed(1)}%` : '...'}
             changeLabel="ensemble confidence"
             icon={<Activity className="h-5 w-5" />}
             educational={{
@@ -219,12 +211,12 @@ const PredictionsPageNew = () => {
           <h2 className="text-lg font-semibold mb-4">Forecast Horizons - {selectedIndex}</h2>
           <div className="grid gap-6 md:grid-cols-3">
             {/* 1-Day */}
-            {pred1d && (
-              <div className={`rounded-xl border p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/5 ${REGIME_BG_COLORS[pred1d.ensemble.predicted_regime_name]}`}>
+            {pred1d && ensemble1d && (
+              <div className={`rounded-xl border p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/5 ${REGIME_BG_COLORS[ensemble1d.predicted_regime_name]}`}>
                 <div className="flex items-center justify-between mb-4">
                   <div className="text-sm font-medium text-muted-foreground">1-Day Ahead</div>
-                  <div className={`text-2xl font-bold ${REGIME_COLORS[pred1d.ensemble.predicted_regime_name]}`}>
-                    {pred1d.ensemble.predicted_regime_name}
+                  <div className={`text-2xl font-bold ${REGIME_COLORS[ensemble1d.predicted_regime_name]}`}>
+                    {ensemble1d.predicted_regime_name}
                   </div>
                 </div>
                 <div className="space-y-3">
@@ -234,10 +226,10 @@ const PredictionsPageNew = () => {
                       <div className="flex-1 bg-muted/50 rounded-full h-2">
                         <div
                           className="bg-gradient-to-r from-neon-cyan to-neon-purple h-2 rounded-full transition-all"
-                          style={{ width: `${pred1d.ensemble.confidence * 100}%` }}
+                          style={{ width: `${ensemble1d.confidence * 100}%` }}
                         />
                       </div>
-                      <div className="text-sm font-medium">{(pred1d.ensemble.confidence * 100).toFixed(1)}%</div>
+                      <div className="text-sm font-medium">{(ensemble1d.confidence * 100).toFixed(1)}%</div>
                     </div>
                   </div>
                   <div className="pt-2 border-t border-border/50">
@@ -248,7 +240,7 @@ const PredictionsPageNew = () => {
                         .map((model, idx) => (
                         <div key={idx} className="flex items-center justify-between text-xs">
                           <span className="text-muted-foreground">{model.model_name}</span>
-                          <span className={`font-medium ${model.predicted_regime === pred1d.ensemble.predicted_regime ? 'text-emerald-500' : 'text-orange-500'}`}>
+                          <span className={`font-medium ${REGIME_COLORS[model.predicted_regime_name] ?? 'text-foreground'}`}>
                             {model.predicted_regime_name} ({(model.confidence * 100).toFixed(0)}%)
                           </span>
                         </div>
@@ -260,12 +252,12 @@ const PredictionsPageNew = () => {
             )}
 
             {/* 7-Day */}
-            {pred7d && (
-              <div className={`rounded-xl border p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/5 ${REGIME_BG_COLORS[pred7d.ensemble.predicted_regime_name]}`}>
+            {pred7d && ensemble7d && (
+              <div className={`rounded-xl border p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/5 ${REGIME_BG_COLORS[ensemble7d.predicted_regime_name]}`}>
                 <div className="flex items-center justify-between mb-4">
                   <div className="text-sm font-medium text-muted-foreground">7-Day Ahead</div>
-                  <div className={`text-2xl font-bold ${REGIME_COLORS[pred7d.ensemble.predicted_regime_name]}`}>
-                    {pred7d.ensemble.predicted_regime_name}
+                  <div className={`text-2xl font-bold ${REGIME_COLORS[ensemble7d.predicted_regime_name]}`}>
+                    {ensemble7d.predicted_regime_name}
                   </div>
                 </div>
                 <div className="space-y-3">
@@ -275,10 +267,10 @@ const PredictionsPageNew = () => {
                       <div className="flex-1 bg-muted/50 rounded-full h-2">
                         <div
                           className="bg-gradient-to-r from-neon-cyan to-neon-purple h-2 rounded-full transition-all"
-                          style={{ width: `${pred7d.ensemble.confidence * 100}%` }}
+                          style={{ width: `${ensemble7d.confidence * 100}%` }}
                         />
                       </div>
-                      <div className="text-sm font-medium">{(pred7d.ensemble.confidence * 100).toFixed(1)}%</div>
+                      <div className="text-sm font-medium">{(ensemble7d.confidence * 100).toFixed(1)}%</div>
                     </div>
                   </div>
                   <div className="pt-2 border-t border-border/50">
@@ -289,7 +281,7 @@ const PredictionsPageNew = () => {
                         .map((model, idx) => (
                         <div key={idx} className="flex items-center justify-between text-xs">
                           <span className="text-muted-foreground">{model.model_name}</span>
-                          <span className={`font-medium ${model.predicted_regime === pred7d.ensemble.predicted_regime ? 'text-emerald-500' : 'text-orange-500'}`}>
+                          <span className={`font-medium ${REGIME_COLORS[model.predicted_regime_name] ?? 'text-foreground'}`}>
                             {model.predicted_regime_name} ({(model.confidence * 100).toFixed(0)}%)
                           </span>
                         </div>
@@ -301,12 +293,12 @@ const PredictionsPageNew = () => {
             )}
 
             {/* 30-Day */}
-            {pred30d && (
-              <div className={`rounded-xl border p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/5 ${REGIME_BG_COLORS[pred30d.ensemble.predicted_regime_name]}`}>
+            {pred30d && ensemble30d && (
+              <div className={`rounded-xl border p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/5 ${REGIME_BG_COLORS[ensemble30d.predicted_regime_name]}`}>
                 <div className="flex items-center justify-between mb-4">
                   <div className="text-sm font-medium text-muted-foreground">30-Day Ahead</div>
-                  <div className={`text-2xl font-bold ${REGIME_COLORS[pred30d.ensemble.predicted_regime_name]}`}>
-                    {pred30d.ensemble.predicted_regime_name}
+                  <div className={`text-2xl font-bold ${REGIME_COLORS[ensemble30d.predicted_regime_name]}`}>
+                    {ensemble30d.predicted_regime_name}
                   </div>
                 </div>
                 <div className="space-y-3">
@@ -316,10 +308,10 @@ const PredictionsPageNew = () => {
                       <div className="flex-1 bg-muted/50 rounded-full h-2">
                         <div
                           className="bg-gradient-to-r from-neon-cyan to-neon-purple h-2 rounded-full transition-all"
-                          style={{ width: `${pred30d.ensemble.confidence * 100}%` }}
+                          style={{ width: `${ensemble30d.confidence * 100}%` }}
                         />
                       </div>
-                      <div className="text-sm font-medium">{(pred30d.ensemble.confidence * 100).toFixed(1)}%</div>
+                      <div className="text-sm font-medium">{(ensemble30d.confidence * 100).toFixed(1)}%</div>
                     </div>
                   </div>
                   <div className="pt-2 border-t border-border/50">
@@ -330,7 +322,7 @@ const PredictionsPageNew = () => {
                         .map((model, idx) => (
                         <div key={idx} className="flex items-center justify-between text-xs">
                           <span className="text-muted-foreground">{model.model_name}</span>
-                          <span className={`font-medium ${model.predicted_regime === pred30d.ensemble.predicted_regime ? 'text-emerald-500' : 'text-orange-500'}`}>
+                          <span className={`font-medium ${REGIME_COLORS[model.predicted_regime_name] ?? 'text-foreground'}`}>
                             {model.predicted_regime_name} ({(model.confidence * 100).toFixed(0)}%)
                           </span>
                         </div>
@@ -348,7 +340,7 @@ const PredictionsPageNew = () => {
               title="Forecast Horizons"
               whatItIs="Regime predictions for 3 time horizons: 1-day, 7-day, and 30-day ahead. Each forecast shows the ensemble prediction (weighted vote of HMM, Random Forest, and XGBoost) along with individual model predictions."
               whyItMatters="Different horizons serve different purposes. 1-day forecasts guide short-term tactical decisions (hedging, position sizing). 7-day forecasts help with weekly portfolio rebalancing. 30-day forecasts inform strategic allocation shifts."
-              howToRead="The large colored label shows the predicted regime. The confidence bar shows how certain the ensemble is. Below, individual model predictions are shown — green means the model agrees with the ensemble, orange means it disagrees."
+              howToRead="The large colored label shows the predicted regime. The confidence bar shows how certain the ensemble is. Below, individual model predictions are color-coded by regime: green = Calm, orange = Elevated Stress, red = Crisis, purple = Transition."
               actionableInsight="When all 3 horizons predict the same regime, the signal is strongest. When short-term and long-term diverge, a regime transition may be underway."
             />
           }
