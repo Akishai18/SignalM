@@ -5,6 +5,7 @@ import { FlipCard } from '@/components/ui/flip-card';
 import { EducationCard } from '@/components/dashboard/EducationCard';
 import { useCustomHorizonPrediction, useRegimeTrajectory } from '@/hooks/useRegimeData';
 import RegimeTrajectoryChart from './RegimeTrajectoryChart';
+import { computeWeightedEnsemble } from '@/lib/ensemble';
 
 const REGIME_COLORS: Record<string, string> = {
   'Calm': 'text-emerald-500',
@@ -63,6 +64,7 @@ export default function CustomHorizonPredictor({ selectedIndex }: Props) {
   // Only show results if they match the current queried days
   const showResults = data && queriedDays === days && !isFetching;
   const prediction = data?.prediction;
+  const weightedEnsemble = prediction ? computeWeightedEnsemble(prediction.individual_models) : null;
   const showTrajectoryChart = showTrajectory && trajectoryData && queriedDays === days && !trajectoryFetching;
   const anyLoading = isLoading || isFetching || trajectoryFetching;
 
@@ -211,23 +213,23 @@ export default function CustomHorizonPredictor({ selectedIndex }: Props) {
               )}
 
               {/* Results */}
-              {showResults && prediction && !anyLoading && (
+              {showResults && prediction && weightedEnsemble && !anyLoading && (
                 <div className="space-y-4">
                   {/* Ensemble Result Card */}
-                  <div className={`rounded-xl border p-5 ${REGIME_BG_COLORS[prediction.ensemble.predicted_regime_name]}`}>
+                  <div className={`rounded-xl border p-5 ${REGIME_BG_COLORS[weightedEnsemble.predicted_regime_name]}`}>
                     <div className="flex items-center justify-between mb-3">
                       <div>
                         <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
                           {formatDaysLabel(prediction.requested_horizon)} Forecast
                         </div>
-                        <div className={`text-2xl font-bold ${REGIME_COLORS[prediction.ensemble.predicted_regime_name]}`}>
-                          {prediction.ensemble.predicted_regime_name}
+                        <div className={`text-2xl font-bold ${REGIME_COLORS[weightedEnsemble.predicted_regime_name]}`}>
+                          {weightedEnsemble.predicted_regime_name}
                         </div>
                       </div>
                       <div className="text-right">
                         <div className="text-xs text-muted-foreground mb-1">Confidence</div>
                         <div className="text-xl font-bold font-mono">
-                          {(prediction.ensemble.confidence * 100).toFixed(1)}%
+                          {(weightedEnsemble.confidence * 100).toFixed(1)}%
                         </div>
                       </div>
                     </div>
@@ -237,7 +239,7 @@ export default function CustomHorizonPredictor({ selectedIndex }: Props) {
                       <div className="flex-1 bg-muted/50 rounded-full h-2">
                         <div
                           className="bg-gradient-to-r from-neon-cyan to-neon-purple h-2 rounded-full transition-all"
-                          style={{ width: `${prediction.ensemble.confidence * 100}%` }}
+                          style={{ width: `${weightedEnsemble.confidence * 100}%` }}
                         />
                       </div>
                     </div>
@@ -247,7 +249,7 @@ export default function CustomHorizonPredictor({ selectedIndex }: Props) {
                   <div className="rounded-lg border border-border bg-muted/20 p-4">
                     <div className="text-sm font-medium mb-3">Regime Probabilities</div>
                     <div className="space-y-2">
-                      {Object.entries(prediction.ensemble.probabilities).map(([regime, prob]) => (
+                      {Object.entries(weightedEnsemble.probabilities).map(([regime, prob]) => (
                         <div key={regime} className="flex items-center gap-3">
                           <span className={`text-xs font-medium w-28 ${REGIME_COLORS[regime] || 'text-muted-foreground'}`}>
                             {regime}
