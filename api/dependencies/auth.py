@@ -1,4 +1,5 @@
 import os
+import traceback
 from fastapi import HTTPException, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from supabase import create_client, Client
@@ -14,7 +15,13 @@ def _admin_client() -> Client:
         url = os.environ.get("SUPABASE_URL", "").strip()
         key = os.environ.get("SUPABASE_SERVICE_KEY", "").strip()
         if not url or not key:
-            raise HTTPException(status_code=500, detail="Supabase auth not configured.")
+            missing = []
+            if not url: missing.append("SUPABASE_URL")
+            if not key: missing.append("SUPABASE_SERVICE_KEY")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Supabase auth not configured. Missing env vars: {', '.join(missing)}"
+            )
         _supabase_admin = create_client(url, key)
     return _supabase_admin
 
@@ -32,7 +39,9 @@ def get_current_user(
             raise HTTPException(status_code=401, detail="Invalid token.")
     except HTTPException:
         raise
-    except Exception:
+    except Exception as exc:
+        print(f"[auth] get_user failed: {type(exc).__name__}: {exc}")
+        traceback.print_exc()
         raise HTTPException(status_code=401, detail="Invalid or expired token.")
 
     return {"user_id": user.id, "email": user.email}
