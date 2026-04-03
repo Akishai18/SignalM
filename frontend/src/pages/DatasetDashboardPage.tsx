@@ -106,7 +106,11 @@ export default function DatasetDashboardPage() {
             </TabsList>
 
             <TabsContent value="overview">
-              <CustomRegimeOverviewTab overview={overview} />
+              <CustomRegimeOverviewTab
+                overview={overview}
+                durations={transitionsData?.durations}
+                history={historyData?.history}
+              />
             </TabsContent>
 
             <TabsContent value="history">
@@ -144,6 +148,7 @@ export default function DatasetDashboardPage() {
                 <CustomFactorsTab
                   features={featuresData.features}
                   regimeColorMap={overview.regime_color_map ?? {}}
+                  regimeLabelMap={overview.regime_label_map ?? {}}
                 />
               ) : (
                 <p className="text-sm text-muted-foreground">Loading features…</p>

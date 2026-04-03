@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Calendar, TrendingUp, Zap, Clock } from "lucide-react";
+import { TrendingUp, Zap, Clock, Activity, Target, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CustomForecastingEngine } from "./CustomForecastingEngine";
 
@@ -54,43 +54,38 @@ function getCellBg(value: number): string {
   return "bg-muted/30";
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────
+// ── Summary metric card ────────────────────────────────────────────────────
 
-function CurrentRegimeBanner({
-  regimeId,
-  regimeName,
+function MetricCard({
+  title,
+  value,
+  sub,
+  icon,
   color,
 }: {
-  regimeId: number;
-  regimeName: string;
-  color: string;
+  title: string;
+  value: string;
+  sub?: string;
+  icon: React.ReactNode;
+  color?: string;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-5">
-      <div className="flex items-center gap-3">
-        <div className="rounded-lg p-2" style={{ backgroundColor: `${color}20` }}>
-          <Calendar className="h-5 w-5" style={{ color }} />
-        </div>
-        <div>
-          <p className="text-sm text-muted-foreground">Current Regime</p>
-          <div className="flex items-center gap-2 mt-0.5">
-            <div className="h-3 w-3 rounded-full" style={{ backgroundColor: color }} />
-            <span className="text-xl font-bold">{regimeName}</span>
-          </div>
-        </div>
-        <div className="ml-auto text-right">
-          <p className="text-xs text-muted-foreground">Regime ID</p>
-          <p className="text-xl font-mono font-semibold" style={{ color }}>
-            #{regimeId}
-          </p>
-        </div>
+    <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground font-medium">{title}</p>
+        <div className="text-muted-foreground/50">{icon}</div>
       </div>
+      <p className="text-2xl font-bold tracking-tight" style={{ color: color ?? undefined }}>
+        {value}
+      </p>
+      {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
     </div>
   );
 }
 
+// ── Horizon card ──────────────────────────────────────────────────────────
+
 function HorizonCard({
-  horizonKey,
   pred,
   currentRegime,
   regimeLabelMap,
@@ -103,220 +98,104 @@ function HorizonCard({
   regimeColorMap: Record<string, string>;
 }) {
   const hasHmm = !!pred.hmm;
-  const hmmAgrees =
-    hasHmm && pred.hmm!.predicted_regime === pred.predicted_regime;
+  const hmmAgrees = hasHmm && pred.hmm!.predicted_regime === pred.predicted_regime;
   const willTransition = pred.predicted_regime !== currentRegime;
   const markovColor = regimeColorMap[String(pred.predicted_regime)] ?? "#6b7280";
 
-  // Sort probabilities descending
-  const sortedProbs = Object.entries(pred.probabilities).sort(
-    ([, a], [, b]) => b - a
-  );
+  const sortedProbs = Object.entries(pred.probabilities).sort(([, a], [, b]) => b - a);
 
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden hover:shadow-lg transition-all">
+    <div
+      className="rounded-xl border p-5 space-y-4 hover:-translate-y-0.5 hover:shadow-lg transition-all duration-300"
+      style={{
+        borderColor: markovColor + "40",
+        background: markovColor + "0d",
+      }}
+    >
       {/* Header */}
-      <div className="p-4 border-b border-border bg-muted/10 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Zap className="h-4 w-4 text-primary" />
-          <span className="font-semibold text-sm">{pred.horizon_days}-Day Ahead</span>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+          <Zap className="h-3.5 w-3.5 text-primary" />
+          {pred.horizon_days}-Day Ahead
         </div>
         <span className="text-xs font-mono text-muted-foreground">
-          {(pred.confidence * 100).toFixed(0)}% confidence
+          {(pred.confidence * 100).toFixed(0)}% conf.
         </span>
       </div>
 
-      <div className="p-4 space-y-4">
-        {/* Markov prediction */}
-        <div>
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1.5 font-medium">
-            Markov Chain
-          </p>
-          <div className="flex items-center gap-2">
+      {/* Predicted regime — large */}
+      <div className="space-y-1">
+        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+          Markov Chain
+        </p>
+        <div className="flex items-center gap-2.5">
+          <div className="h-3 w-3 rounded-full flex-shrink-0" style={{ backgroundColor: markovColor }} />
+          <span className="text-xl font-bold" style={{ color: markovColor }}>
+            {pred.predicted_regime_name}
+          </span>
+          {willTransition && (
+            <span className="ml-auto flex items-center gap-1 text-[10px] text-amber-400 font-medium">
+              <TrendingUp className="h-3 w-3" />
+              transition
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Confidence bar */}
+      <div className="space-y-1">
+        <div className="h-1.5 rounded-full bg-muted/50 overflow-hidden">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-neon-cyan to-neon-purple transition-all duration-500"
+            style={{ width: `${pred.confidence * 100}%` }}
+          />
+        </div>
+      </div>
+
+      {/* HMM agreement badge */}
+      {hasHmm && (
+        <div className="flex items-center justify-between text-xs border-t border-border/40 pt-3">
+          <div className="flex items-center gap-1.5">
             <div
-              className="h-3 w-3 rounded-full shrink-0"
-              style={{ backgroundColor: markovColor }}
+              className="h-2 w-2 rounded-full"
+              style={{ backgroundColor: regimeColorMap[String(pred.hmm!.predicted_regime)] ?? "#6b7280" }}
             />
-            <span className="font-semibold text-sm">{pred.predicted_regime_name}</span>
+            <span className="text-muted-foreground">HMM: {pred.hmm!.predicted_regime_name}</span>
           </div>
+          <span className={cn(
+            "px-2 py-0.5 rounded-full font-medium text-[10px]",
+            hmmAgrees ? "bg-green-500/15 text-green-400" : "bg-amber-500/15 text-amber-400"
+          )}>
+            {hmmAgrees ? "✓ agrees" : "⚠ differs"}
+          </span>
         </div>
-
-        {/* HMM prediction (if available) */}
-        {hasHmm && (
-          <div>
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1.5 font-medium">
-              HMM
-            </p>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div
-                  className="h-3 w-3 rounded-full shrink-0"
-                  style={{
-                    backgroundColor:
-                      regimeColorMap[String(pred.hmm!.predicted_regime)] ?? "#6b7280",
-                  }}
-                />
-                <span className="font-semibold text-sm">
-                  {pred.hmm!.predicted_regime_name}
-                </span>
-              </div>
-              <span
-                className={cn(
-                  "text-[10px] px-2 py-0.5 rounded-full font-medium",
-                  hmmAgrees
-                    ? "bg-green-500/15 text-green-400"
-                    : "bg-amber-500/15 text-amber-400"
-                )}
-              >
-                {hmmAgrees ? "✓ agrees" : "⚠ differs"}
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* Probability distribution */}
-        <div className="space-y-1.5">
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
-            Regime Probabilities
-          </p>
-          {sortedProbs.map(([rid, prob]) => {
-            const color = regimeColorMap[rid] ?? "#6b7280";
-            const name = regimeLabelMap[rid] ?? `Regime ${rid}`;
-            return (
-              <div key={rid} className="space-y-0.5">
-                <div className="flex justify-between text-xs">
-                  <div className="flex items-center gap-1.5">
-                    <div className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
-                    <span className="text-muted-foreground">{name}</span>
-                  </div>
-                  <span className="font-mono font-medium">{(prob * 100).toFixed(1)}%</span>
-                </div>
-                <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{ width: `${prob * 100}%`, backgroundColor: color }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Transition warning */}
-        {willTransition && (
-          <div className="flex items-center gap-2 text-xs text-amber-400 border-t border-border pt-3">
-            <TrendingUp className="h-3 w-3" />
-            <span className="font-medium">Regime transition expected</span>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ModelComparisonTable({
-  predictions,
-  regimeLabelMap,
-  regimeColorMap,
-}: {
-  predictions: Record<string, HorizonData>;
-  regimeLabelMap: Record<string, string>;
-  regimeColorMap: Record<string, string>;
-}) {
-  const hasHmm = HORIZONS.some((h) => !!predictions[h]?.hmm);
-  if (!hasHmm) return null;
-
-  return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
-      <div className="p-4 border-b border-border bg-muted/10">
-        <h3 className="text-sm font-semibold">Model Comparison</h3>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Markov chain vs Hidden Markov Model across horizons
-        </p>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs">
-          <thead className="bg-muted/20">
-            <tr className="text-left text-muted-foreground border-b border-border">
-              <th className="px-4 py-2.5 font-medium">Horizon</th>
-              <th className="px-4 py-2.5 font-medium">Markov Prediction</th>
-              <th className="px-4 py-2.5 font-medium">Markov Confidence</th>
-              <th className="px-4 py-2.5 font-medium">HMM Prediction</th>
-              <th className="px-4 py-2.5 font-medium">HMM Confidence</th>
-              <th className="px-4 py-2.5 font-medium">Agreement</th>
-            </tr>
-          </thead>
-          <tbody>
-            {HORIZONS.map((h) => {
-              const pred = predictions[h];
-              if (!pred) return null;
-              const hmm = pred.hmm;
-              const markovColor = regimeColorMap[String(pred.predicted_regime)] ?? "#6b7280";
-              const hmmColor = hmm
-                ? (regimeColorMap[String(hmm.predicted_regime)] ?? "#6b7280")
-                : null;
-              const agrees = hmm && hmm.predicted_regime === pred.predicted_regime;
-
-              return (
-                <tr
-                  key={h}
-                  className="border-b border-border/30 hover:bg-muted/20 transition-colors"
-                >
-                  <td className="px-4 py-3 font-semibold">
-                    {pred.horizon_days}d
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1.5">
-                      <div className="h-2 w-2 rounded-full" style={{ backgroundColor: markovColor }} />
-                      {pred.predicted_regime_name}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 font-mono">
-                    {(pred.confidence * 100).toFixed(1)}%
-                  </td>
-                  <td className="px-4 py-3">
-                    {hmm ? (
-                      <div className="flex items-center gap-1.5">
-                        <div className="h-2 w-2 rounded-full" style={{ backgroundColor: hmmColor! }} />
-                        {hmm.predicted_regime_name}
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground italic">N/A</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 font-mono">
-                    {hmm ? `${(hmm.confidence * 100).toFixed(1)}%` : "—"}
-                  </td>
-                  <td className="px-4 py-3">
-                    {hmm ? (
-                      <span
-                        className={cn(
-                          "px-2 py-0.5 rounded-full font-medium text-[10px]",
-                          agrees
-                            ? "bg-green-500/15 text-green-400"
-                            : "bg-amber-500/15 text-amber-400"
-                        )}
-                      >
-                        {agrees ? "✓ Agree" : "⚠ Differ"}
-                      </span>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      {!hasHmm && (
-        <p className="px-4 py-3 text-xs text-muted-foreground italic">
-          HMM requires ≥252 trading days of data.
-        </p>
       )}
+
+      {/* Probability bars */}
+      <div className="space-y-1.5 border-t border-border/40 pt-3">
+        {sortedProbs.map(([rid, prob]) => {
+          const color = regimeColorMap[rid] ?? "#6b7280";
+          const name = regimeLabelMap[rid] ?? `Regime ${rid}`;
+          return (
+            <div key={rid} className="flex items-center gap-2 text-xs">
+              <div className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+              <span className="text-muted-foreground min-w-0 flex-1">{name}</span>
+              <div className="flex-1 h-1 rounded-full bg-muted/50 overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{ width: `${prob * 100}%`, backgroundColor: color }}
+                />
+              </div>
+              <span className="font-mono w-10 text-right tabular-nums">{(prob * 100).toFixed(1)}%</span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
+
+// ── Transition matrix ─────────────────────────────────────────────────────
 
 function InteractiveTransitionMatrix({
   matrix,
@@ -340,94 +219,57 @@ function InteractiveTransitionMatrix({
           Hover cells for details · Row = FROM · Column = TO · Diagonal = persistence
         </p>
       </div>
-
       <div className="overflow-x-auto">
         <div
           className="grid gap-1"
-          style={{
-            gridTemplateColumns: `120px repeat(${regimeIds.length}, 1fr)`,
-          }}
+          style={{ gridTemplateColumns: `120px repeat(${regimeIds.length}, 1fr)` }}
         >
-          {/* Column headers */}
-          <div className="text-[10px] text-muted-foreground font-medium p-1">
-            From ↓ &nbsp; To →
-          </div>
+          <div className="text-[10px] text-muted-foreground font-medium p-1">From ↓ &nbsp; To →</div>
           {regimeIds.map((colId) => (
             <div
               key={colId}
-              className={cn(
-                "text-[10px] font-medium p-1 text-center transition-all",
-                hoveredCell?.to === colId ? "scale-105" : ""
-              )}
+              className={cn("text-[10px] font-medium p-1 text-center transition-all", hoveredCell?.to === colId ? "scale-105" : "")}
               style={{ color: regimeColorMap[colId] ?? "#6b7280" }}
             >
               {regimeLabelMap[colId] ?? `R${colId}`}
             </div>
           ))}
-
-          {/* Data rows */}
           {regimeIds.map((fromId) => (
             <>
               <div
                 key={`label-${fromId}`}
-                className={cn(
-                  "text-[10px] font-medium p-1 flex items-center gap-1.5 transition-all",
-                  hoveredCell?.from === fromId ? "scale-105" : ""
-                )}
+                className={cn("text-[10px] font-medium p-1 flex items-center gap-1.5 transition-all", hoveredCell?.from === fromId ? "scale-105" : "")}
                 style={{ color: regimeColorMap[fromId] ?? "#6b7280" }}
               >
-                <div
-                  className="h-2 w-2 rounded-full shrink-0"
-                  style={{ backgroundColor: regimeColorMap[fromId] ?? "#6b7280" }}
-                />
+                <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: regimeColorMap[fromId] ?? "#6b7280" }} />
                 {regimeLabelMap[fromId] ?? `R${fromId}`}
               </div>
-
               {regimeIds.map((toId) => {
                 const value = matrix[fromId]?.[toId] ?? 0;
                 const count = counts?.[fromId]?.[toId] ?? null;
-                const isHovered =
-                  hoveredCell?.from === fromId && hoveredCell?.to === toId;
-
+                const isHovered = hoveredCell?.from === fromId && hoveredCell?.to === toId;
                 return (
                   <div
                     key={`${fromId}-${toId}`}
                     className={cn(
                       "relative rounded-md p-2 text-center cursor-pointer transition-all",
                       getCellBg(value),
-                      isHovered
-                        ? "scale-110 shadow-lg z-10 ring-1 ring-primary/40"
-                        : "hover:scale-105 hover:shadow-md hover:z-10"
+                      isHovered ? "scale-110 shadow-lg z-10 ring-1 ring-primary/40" : "hover:scale-105 hover:shadow-md hover:z-10"
                     )}
                     onMouseEnter={() => setHoveredCell({ from: fromId, to: toId })}
                     onMouseLeave={() => setHoveredCell(null)}
                   >
-                    <div className="text-sm font-mono font-bold">
-                      {(value * 100).toFixed(1)}%
-                    </div>
-                    {count !== null && (
-                      <div className="text-[9px] opacity-60">{count}×</div>
-                    )}
-
-                    {/* Tooltip */}
+                    <div className="text-sm font-mono font-bold">{(value * 100).toFixed(1)}%</div>
+                    {count !== null && <div className="text-[9px] opacity-60">{count}×</div>}
                     {isHovered && (
                       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 rounded-lg border border-border bg-card shadow-xl text-[10px] whitespace-nowrap z-20 pointer-events-none">
-                        <span style={{ color: regimeColorMap[fromId] ?? "#6b7280" }}>
-                          {regimeLabelMap[fromId] ?? fromId}
-                        </span>
+                        <span style={{ color: regimeColorMap[fromId] ?? "#6b7280" }}>{regimeLabelMap[fromId] ?? fromId}</span>
                         <span className="text-muted-foreground mx-1">→</span>
-                        <span style={{ color: regimeColorMap[toId] ?? "#6b7280" }}>
-                          {regimeLabelMap[toId] ?? toId}
-                        </span>
+                        <span style={{ color: regimeColorMap[toId] ?? "#6b7280" }}>{regimeLabelMap[toId] ?? toId}</span>
                         <div className="font-mono font-bold mt-0.5">
-                          {(value * 100).toFixed(1)}%
-                          {count !== null && ` (${count} transitions)`}
+                          {(value * 100).toFixed(1)}%{count !== null && ` (${count} transitions)`}
                         </div>
-                        {fromId === toId && (
-                          <div className="text-muted-foreground mt-0.5">
-                            persistence (stays in regime)
-                          </div>
-                        )}
+                        {fromId === toId && <div className="text-muted-foreground mt-0.5">persistence</div>}
                       </div>
                     )}
                   </div>
@@ -440,6 +282,8 @@ function InteractiveTransitionMatrix({
     </div>
   );
 }
+
+// ── Duration stats ─────────────────────────────────────────────────────────
 
 function DurationStatsPanel({
   durations,
@@ -459,50 +303,33 @@ function DurationStatsPanel({
         <Clock className="h-4 w-4 text-primary" />
         <div>
           <h3 className="text-sm font-semibold">Regime Duration Stats</h3>
-          <p className="text-xs text-muted-foreground">
-            How long each regime typically lasts in your data
-          </p>
+          <p className="text-xs text-muted-foreground">How long each regime typically lasts</p>
         </div>
       </div>
-
       <div className="space-y-3">
         {entries.map(([rid, d]) => {
           const color = regimeColorMap[rid] ?? "#6b7280";
           const name = regimeLabelMap[rid] ?? d.name ?? `Regime ${rid}`;
           const barPct = (d.mean_days / maxMean) * 100;
-
           return (
             <div
               key={rid}
               className="group rounded-lg border p-3 hover:scale-[1.01] transition-all cursor-default"
-              style={{
-                borderColor: `${color}30`,
-                backgroundColor: `${color}0d`,
-              }}
+              style={{ borderColor: `${color}30`, backgroundColor: `${color}0d` }}
             >
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-semibold" style={{ color }}>
-                  {name}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {d.total_runs} occurrences
-                </span>
+                <span className="text-sm font-semibold" style={{ color }}>{name}</span>
+                <span className="text-xs text-muted-foreground">{d.total_runs} occurrences</span>
               </div>
-
               <div className="relative h-5 bg-muted/50 rounded-full mb-2 overflow-hidden">
                 <div
                   className="h-5 rounded-full transition-all group-hover:brightness-110"
-                  style={{
-                    width: `${barPct}%`,
-                    minWidth: "20px",
-                    backgroundColor: color,
-                  }}
+                  style={{ width: `${barPct}%`, minWidth: "20px", backgroundColor: color }}
                 />
                 <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold">
                   avg {d.mean_days.toFixed(1)} days
                 </span>
               </div>
-
               <div className="flex justify-between text-[10px] text-muted-foreground">
                 <span>Min: {d.min_days}d</span>
                 <span>Median: {d.median_days.toFixed(0)}d</span>
@@ -534,28 +361,63 @@ export function CustomPredictionsTab({
   const currentName = regimeLabelMap[String(currentRegime)] ?? `Regime ${currentRegime}`;
   const hasHmm = HORIZONS.some((h) => !!predictions[h]?.hmm);
 
+  const pred1d = predictions["1d"];
+  const confidence1d = pred1d?.confidence ?? null;
+
+  // Count how many horizons agree on same regime
+  const horizonRegimes = HORIZONS.map((h) => predictions[h]?.predicted_regime).filter((r) => r != null);
+  const modeRegime = horizonRegimes.length > 0
+    ? horizonRegimes.sort((a, b) =>
+        horizonRegimes.filter(v => v === a).length - horizonRegimes.filter(v => v === b).length
+      ).pop()
+    : null;
+  const allAgree = new Set(horizonRegimes).size === 1;
+
   return (
-    <div className="space-y-6">
-      {/* Current regime banner */}
+    <div className="space-y-5">
+      {/* Summary metric cards */}
       {showBanner && (
-        <CurrentRegimeBanner
-          regimeId={currentRegime}
-          regimeName={currentName}
-          color={currentColor}
-        />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <MetricCard
+            title="Current Regime"
+            value={currentName}
+            sub="most recent observation"
+            icon={<BarChart3 className="h-4 w-4" />}
+            color={currentColor}
+          />
+          <MetricCard
+            title="1-Day Prediction"
+            value={pred1d?.predicted_regime_name ?? "—"}
+            sub={pred1d ? `Markov chain` : undefined}
+            icon={<Target className="h-4 w-4" />}
+            color={pred1d ? (regimeColorMap[String(pred1d.predicted_regime)] ?? undefined) : undefined}
+          />
+          <MetricCard
+            title="1-Day Confidence"
+            value={confidence1d != null ? `${(confidence1d * 100).toFixed(1)}%` : "—"}
+            sub="Markov prediction strength"
+            icon={<Activity className="h-4 w-4" />}
+          />
+          <MetricCard
+            title="Horizon Agreement"
+            value={allAgree ? "100%" : `${Math.round((horizonRegimes.filter(r => r === modeRegime).length / horizonRegimes.length) * 100)}%`}
+            sub={allAgree ? "all horizons agree" : "horizons diverge"}
+            icon={<TrendingUp className="h-4 w-4" />}
+            color={allAgree ? "#10b981" : "#f59e0b"}
+          />
+        </div>
       )}
 
-      {/* HMM availability notice */}
+      {/* HMM notice */}
       {!hasHmm && (
         <div className="rounded-lg border border-border bg-muted/20 px-4 py-2.5 text-xs text-muted-foreground">
-          <span className="font-medium text-foreground">HMM not available</span> — requires ≥252
-          trading days. Only Markov chain predictions shown.
+          <span className="font-medium text-foreground">HMM not available</span> — requires ≥252 trading days. Only Markov chain predictions shown.
         </div>
       )}
 
       {/* Forecast horizon cards */}
       <div>
-        <h3 className="text-sm font-semibold mb-3">Regime Forecast</h3>
+        <h3 className="text-sm font-semibold mb-3">Forecast Horizons</h3>
         <div className="grid gap-4 sm:grid-cols-3">
           {HORIZONS.map((key) => {
             const pred = predictions[key];
@@ -574,7 +436,7 @@ export function CustomPredictionsTab({
         </div>
       </div>
 
-      {/* Interactive forecasting engine */}
+      {/* Forecasting engine */}
       {sessionId && (
         <CustomForecastingEngine
           sessionId={sessionId}
@@ -584,15 +446,8 @@ export function CustomPredictionsTab({
         />
       )}
 
-      {/* Model comparison table (only shown when HMM exists) */}
-      <ModelComparisonTable
-        predictions={predictions}
-        regimeLabelMap={regimeLabelMap}
-        regimeColorMap={regimeColorMap}
-      />
-
-      {/* Transition matrix + duration stats side by side */}
-      <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
+      {/* Transition matrix + duration stats */}
+      <div className="grid gap-5 lg:grid-cols-[3fr_2fr]">
         {transitionMatrix && (
           <InteractiveTransitionMatrix
             matrix={transitionMatrix}
@@ -601,7 +456,6 @@ export function CustomPredictionsTab({
             regimeColorMap={regimeColorMap}
           />
         )}
-
         {durations && Object.keys(durations).length > 0 && (
           <DurationStatsPanel
             durations={durations}
