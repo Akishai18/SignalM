@@ -357,6 +357,36 @@ def _validate(df: pd.DataFrame):
               f"{len(good_cols)} tickers retained.")
     df.drop(columns=[c for c in df.columns if c not in good_cols], inplace=True)
 
+    # Drop columns whose names clearly indicate they are not price series
+    # (change %, returns, volume, etc.) — these legitimately contain negatives
+    # and should never be treated as prices.
+    NON_PRICE_PATTERNS = [
+        "change", "return", "ret", "volume", "vol", "turnover",
+        "dividend", "split", "earnings", "eps", "market cap",
+        "open interest", "oi",
+    ]
+
+    def _is_non_price_col(name: str) -> bool:
+        n = name.lower().strip()
+        # Column whose name IS just "%" or ends with "%" is a return/change col
+        if n.endswith("%") or n.startswith("%"):
+            return True
+        for pat in NON_PRICE_PATTERNS:
+            if pat in n:
+                return True
+        return False
+
+    non_price = [c for c in df.columns if _is_non_price_col(c)]
+    if non_price:
+        print(f"[file_parser] Dropping {len(non_price)} non-price column(s): {non_price[:10]}")
+        df.drop(columns=non_price, inplace=True)
+
+    if df.shape[1] == 0:
+        raise FileParseError(
+            "No usable price columns remain after removing non-price columns "
+            "(change %, volume, etc.). Please upload a file with price (Close/Adj Close) data."
+        )
+
     # Negative price check
     neg_mask = (df < 0) & df.notna()
     if neg_mask.any().any():
