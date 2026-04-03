@@ -69,6 +69,17 @@ async def upload_dataset(
         "user_id": current_user["user_id"],
     })
 
+    # Add to user's dataset index so it shows up immediately on any device
+    storage.upsert_user_index_entry(current_user["user_id"], {
+        "session_id": session_id,
+        "dataset_name": dataset_name,
+        "original_filename": file.filename,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "status": "pending",
+        "progress_pct": 0,
+        "exists": True,
+    })
+
     # Launch background analysis thread
     t = threading.Thread(
         target=_run_analysis_thread,
@@ -138,39 +149,118 @@ def get_meta(session_id: str, current_user: dict = Depends(get_current_user)):
 
 @router.get("/list")
 def list_datasets(ids: str = "", current_user: dict = Depends(get_current_user)):
-    """Return metadata for all requested session IDs (comma-separated), filtered to caller's datasets."""
-    if not ids:
-        return []
-    requested = [i.strip() for i in ids.split(",") if i.strip()]
+    """Return metadata for datasets owned by this user.
+    If ids (comma-separated) are provided, validate those specific sessions.
+    If ids is empty, return all datasets from the user's index (O(1)).
+    Falls back to a full bucket scan on first use to migrate legacy datasets.
+    """
+    user_id = current_user["user_id"]
+
+    if ids:
+        # Validate specific session IDs (used by legacy localStorage sync)
+        session_ids = [i.strip() for i in ids.split(",") if i.strip()]
+        results = []
+        for sid in session_ids:
+            meta_path = f"{sid}/results/dataset_meta.json"
+            status_path = f"{sid}/results/analysis_status.json"
+            if not storage.path_exists(meta_path):
+                results.append({"session_id": sid, "exists": False})
+                continue
+            try:
+                meta = storage.read_json(meta_path)
+            except Exception:
+                continue
+            if meta.get("user_id") != user_id:
+                results.append({"session_id": sid, "exists": False})
+                continue
+            if storage.path_exists(status_path):
+                try:
+                    status_data = storage.read_json(status_path)
+                    meta["status"] = status_data.get("status", "unknown")
+                    meta["progress_pct"] = status_data.get("progress_pct", 0)
+                except Exception:
+                    pass
+            meta["exists"] = True
+            results.append(meta)
+        return results
+
+    # No ids — return all datasets for this user via their index
+    index = storage.read_user_index(user_id)
+
+    if not index:
+        # First visit: no index yet. Run a one-time scan to find legacy datasets,
+        # build the index, then return results.
+        index = _build_user_index(user_id)
+
+    # For in-progress entries, refresh status from live status file
     results = []
-    for sid in requested:
-        meta_path = f"{sid}/results/dataset_meta.json"
-        status_path = f"{sid}/results/analysis_status.json"
-        if not storage.path_exists(meta_path):
-            results.append({"session_id": sid, "exists": False})
+    for entry in index:
+        sid = entry.get("session_id")
+        if not sid:
             continue
-        meta = storage.read_json(meta_path)
-        # Only return datasets owned by this user
-        if meta.get("user_id") != current_user["user_id"]:
-            results.append({"session_id": sid, "exists": False})
-            continue
-        if storage.path_exists(status_path):
-            status = storage.read_json(status_path)
-            meta["status"] = status.get("status", "unknown")
-            meta["progress_pct"] = status.get("progress_pct", 0)
-        meta["exists"] = True
-        results.append(meta)
+        if entry.get("status") in ("pending", "running"):
+            status_path = f"{sid}/results/analysis_status.json"
+            try:
+                status_data = storage.read_json(status_path)
+                entry = {**entry, "status": status_data.get("status", entry["status"]),
+                         "progress_pct": status_data.get("progress_pct", 0)}
+            except Exception:
+                pass
+        results.append({**entry, "exists": True})
     return results
+
+
+def _build_user_index(user_id: str) -> list:
+    """Scan all sessions to find datasets owned by this user, write their index, and return it."""
+    found = []
+    for sid in storage.list_sessions():
+        meta_path = f"{sid}/results/dataset_meta.json"
+        if not storage.path_exists(meta_path):
+            continue
+        try:
+            meta = storage.read_json(meta_path)
+        except Exception:
+            continue
+        if meta.get("user_id") != user_id:
+            continue
+        status_path = f"{sid}/results/analysis_status.json"
+        status = "complete"
+        progress_pct = 100
+        if storage.path_exists(status_path):
+            try:
+                s = storage.read_json(status_path)
+                status = s.get("status", "complete")
+                progress_pct = s.get("progress_pct", 100)
+            except Exception:
+                pass
+        found.append({
+            "session_id": sid,
+            "dataset_name": meta.get("dataset_name", ""),
+            "original_filename": meta.get("original_filename"),
+            "created_at": meta.get("created_at", ""),
+            "status": status,
+            "progress_pct": progress_pct,
+            "tickers": meta.get("tickers"),
+            "date_range": meta.get("date_range"),
+            "exists": True,
+        })
+    # Sort newest first
+    found.sort(key=lambda e: e.get("created_at", ""), reverse=True)
+    if found:
+        storage.write_user_index(user_id, found)
+    return found
 
 
 # ── Delete ────────────────────────────────────────────────────────────────────
 
 @router.delete("/{session_id}")
 def delete_dataset(session_id: str, current_user: dict = Depends(get_current_user)):
-    _check_ownership(session_id, current_user["user_id"])
+    user_id = current_user["user_id"]
+    _check_ownership(session_id, user_id)
     if not storage.path_exists(f"{session_id}/results/analysis_status.json"):
         raise HTTPException(status_code=404, detail="Dataset not found.")
     storage.delete_session(session_id)
+    storage.remove_user_index_entry(user_id, session_id)
     return {"deleted": True, "session_id": session_id}
 
 

@@ -255,6 +255,25 @@ def _run(session_id: str, ext: str, contents: bytes):
 
     # ── Done ─────────────────────────────────────────────────────────────────
     _update_status(session_id, "complete", 100, "Analysis complete.")
+
+    # Update user index with final metadata so listing is always fast
+    try:
+        user_id = meta.get("user_id")
+        if user_id:
+            storage.upsert_user_index_entry(user_id, {
+                "session_id": session_id,
+                "dataset_name": meta.get("dataset_name", ""),
+                "original_filename": meta.get("original_filename"),
+                "created_at": meta.get("created_at", ""),
+                "status": "complete",
+                "progress_pct": 100,
+                "tickers": meta.get("tickers"),
+                "date_range": meta.get("date_range"),
+                "exists": True,
+            })
+    except Exception as _idx_exc:
+        print(f"[custom_pipeline] Warning: failed to update user index: {_idx_exc}")
+
     print(f"[custom_pipeline] ✓ {session_id} complete ({len(labels)} feature rows)")
 
 

@@ -903,10 +903,11 @@ export const customDataApi = {
     return handleResponse(response);
   },
 
-  async listDatasets(ids: string): Promise<any[]> {
-    const response = await fetch(`${API_BASE_URL}/api/custom/list?ids=${encodeURIComponent(ids)}`, {
-      headers: await authHeaders(),
-    });
+  async listDatasets(ids?: string): Promise<any[]> {
+    const url = ids
+      ? `${API_BASE_URL}/api/custom/list?ids=${encodeURIComponent(ids)}`
+      : `${API_BASE_URL}/api/custom/list`;
+    const response = await fetch(url, { headers: await authHeaders() });
     return handleResponse(response);
   },
 

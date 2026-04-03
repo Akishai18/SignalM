@@ -1,6 +1,8 @@
 /**
- * Persistent localStorage store for user-uploaded datasets.
- * On mount, validates stored datasets against the server.
+ * Persistent store for user-uploaded datasets.
+ * Source of truth is the server (Supabase Storage).
+ * localStorage is used as a cache and to track in-progress uploads
+ * that haven't been written to storage yet.
  */
 import { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
@@ -36,32 +38,44 @@ function writeStorage(userId: string, datasets: StoredDataset[]) {
 export function useDatasetStore(userId: string) {
   const [datasets, setDatasets] = useState<StoredDataset[]>(() => readStorage(userId));
 
-  // On mount: validate datasets against the server
+  // On mount: fetch all user datasets from the server (source of truth).
+  // Merge with localStorage to preserve any in-progress uploads not yet in storage.
   useEffect(() => {
-    const stored = readStorage(userId);
-    if (stored.length === 0) return;
-    const ids = stored.map((d) => d.session_id).join(",");
     api.customData
-      .listDatasets(ids)
+      .listDatasets()
       .then((serverList: any[]) => {
-        const updated = stored.map((d) => {
-          const serverEntry = serverList.find((s) => s.session_id === d.session_id);
-          if (!serverEntry || serverEntry.exists === false) {
-            return { ...d, status: "expired" as const };
-          }
-          return {
-            ...d,
-            status: (serverEntry.status as StoredDataset["status"]) ?? d.status,
-            tickers: serverEntry.tickers ?? d.tickers,
-            date_range: serverEntry.date_range ?? d.date_range,
-          };
-        });
-        writeStorage(userId, updated);
-        setDatasets(updated);
+        const serverDatasets: StoredDataset[] = serverList
+          .filter((s) => s.exists !== false)
+          .map((s) => ({
+            session_id: s.session_id,
+            dataset_name: s.dataset_name,
+            original_filename: s.original_filename,
+            created_at: s.created_at,
+            status: (s.status as StoredDataset["status"]) ?? "complete",
+            progress_pct: s.progress_pct,
+            tickers: s.tickers,
+            date_range: s.date_range,
+          }));
+
+        const serverIds = new Set(serverDatasets.map((d) => d.session_id));
+
+        // Keep local-only entries that are still in-progress (not yet flushed to storage)
+        const localOnly = readStorage(userId).filter(
+          (d) => !serverIds.has(d.session_id) && (d.status === "pending" || d.status === "running")
+        );
+
+        const merged = [...serverDatasets, ...localOnly].sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+
+        writeStorage(userId, merged);
+        setDatasets(merged);
       })
       .catch(() => {
-        // Server unreachable — mark all as expired
-        const updated = stored.map((d) => ({ ...d, status: "expired" as const }));
+        // Server unreachable — fall back to localStorage cache, mark all as expired
+        const cached = readStorage(userId);
+        if (cached.length === 0) return;
+        const updated = cached.map((d) => ({ ...d, status: "expired" as const }));
         writeStorage(userId, updated);
         setDatasets(updated);
       });

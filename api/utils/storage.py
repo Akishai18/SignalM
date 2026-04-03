@@ -13,6 +13,8 @@ Path layout:
   {session_id}/results/regime_stats.json
   {session_id}/results/predictions.json
 
+  users/{user_id}/dataset_index.json  — per-user index for O(1) listing
+
 Env vars required:
   SUPABASE_URL          — project URL (https://xxx.supabase.co)
   SUPABASE_SERVICE_KEY  — service_role secret key (never the anon key)
@@ -94,6 +96,51 @@ def read_csv(path: str, **kwargs) -> pd.DataFrame:
 
 
 # ── Session management ────────────────────────────────────────────────────────
+
+def list_sessions() -> list:
+    """List all top-level session IDs (folders) in the bucket."""
+    try:
+        entries = _client().storage.from_(BUCKET).list("") or []
+        return [e["name"] for e in entries if e.get("name")]
+    except Exception as exc:
+        print(f"[storage] list_sessions failed: {exc}")
+        return []
+
+
+# ── Per-user dataset index (O(1) listing) ────────────────────────────────────
+
+def _user_index_path(user_id: str) -> str:
+    return f"users/{user_id}/dataset_index.json"
+
+
+def read_user_index(user_id: str) -> list:
+    """Read the dataset index for a user. Returns [] if not yet created."""
+    try:
+        data = download_bytes(_user_index_path(user_id))
+        return json.loads(data.decode("utf-8"))
+    except Exception:
+        return []
+
+
+def write_user_index(user_id: str, entries: list) -> None:
+    upload_bytes(_user_index_path(user_id), json.dumps(entries).encode("utf-8"), "application/json")
+
+
+def upsert_user_index_entry(user_id: str, entry: dict) -> None:
+    """Add or update a single entry in the user's dataset index."""
+    entries = read_user_index(user_id)
+    sid = entry["session_id"]
+    entries = [e for e in entries if e.get("session_id") != sid]
+    entries.insert(0, entry)
+    write_user_index(user_id, entries)
+
+
+def remove_user_index_entry(user_id: str, session_id: str) -> None:
+    """Remove a session from the user's dataset index."""
+    entries = read_user_index(user_id)
+    entries = [e for e in entries if e.get("session_id") != session_id]
+    write_user_index(user_id, entries)
+
 
 def delete_session(session_id: str) -> None:
     """Delete every file belonging to a session."""
