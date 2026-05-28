@@ -32,23 +32,23 @@ export default function DatasetDashboardPage() {
 
   return (
     <DashboardLayout>
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-30">
-        <div className="px-6 py-4">
-          <div className="flex items-center gap-3">
+      <header className="sticky top-14 z-20 border-b border-border bg-card/50 backdrop-blur-sm md:top-0 md:z-30">
+        <div className="px-4 py-3 md:px-6 md:py-4">
+          <div className="flex items-center gap-2 md:gap-3">
             <Button
               variant="ghost"
               size="sm"
-              className="gap-2"
+              className="gap-2 shrink-0"
               onClick={() => navigate("/upload")}
             >
               <ArrowLeft className="h-4 w-4" />
-              My Data
+              <span className="hidden sm:inline">My Data</span>
             </Button>
-            <div className="h-4 w-px bg-border" />
-            <div>
-              <h1 className="text-xl font-bold tracking-tight">{datasetName}</h1>
+            <div className="h-4 w-px shrink-0 bg-border" />
+            <div className="min-w-0">
+              <h1 className="truncate text-base font-bold tracking-tight md:text-xl">{datasetName}</h1>
               {overview?.date_range && (
-                <p className="text-xs text-muted-foreground">
+                <p className="truncate text-xs text-muted-foreground">
                   {overview.date_range.start} → {overview.date_range.end}
                   {overview.tickers?.length > 0 && (
                     <> · {overview.tickers.length} ticker{overview.tickers.length !== 1 ? "s" : ""}</>
@@ -60,7 +60,7 @@ export default function DatasetDashboardPage() {
         </div>
       </header>
 
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         {statusLoading && (
           <AnalysisProgressScreen status="pending" progress={0} message="Loading…" />
         )}
@@ -97,7 +97,7 @@ export default function DatasetDashboardPage() {
 
         {isComplete && overview && (
           <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid grid-cols-5 w-full max-w-2xl">
+            <TabsList className="grid w-full max-w-2xl grid-cols-5 text-xs sm:text-sm">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="history">History</TabsTrigger>
               <TabsTrigger value="predictions">Predictions</TabsTrigger>

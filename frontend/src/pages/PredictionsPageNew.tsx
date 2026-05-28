@@ -92,33 +92,33 @@ const PredictionsPageNew = () => {
   return (
     <DashboardLayout>
       {/* Sticky Header with Index Selector */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-30">
-        <div className="px-6 py-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">
+      <header className="sticky top-14 z-20 border-b border-border bg-card/50 backdrop-blur-sm md:top-0 md:z-30">
+        <div className="px-4 py-3 md:px-6">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="min-w-0">
+              <h1 className="text-xl font-bold tracking-tight md:text-2xl">
                 <span className="text-gradient">SignalM</span> Predictions
               </h1>
-              <p className="text-sm text-muted-foreground mt-0.5">
+              <p className="mt-0.5 text-xs text-muted-foreground md:text-sm">
                 ML-powered regime forecasting with 3 models
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1 md:overflow-visible md:pb-0">
               {INDICES.map(({ symbol, name, color }) => (
                 <button
                   key={symbol}
                   onClick={() => setSelectedIndex(symbol)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                  className={`shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all md:px-3 md:text-sm ${
                     selectedIndex === symbol
                       ? `${color} text-white shadow-md`
                       : 'bg-muted text-muted-foreground hover:bg-muted/80'
                   }`}
                 >
                   {symbol}
-                  <span className="text-xs ml-1.5 opacity-70 hidden lg:inline">{name}</span>
+                  <span className="ml-1.5 hidden text-xs opacity-70 lg:inline">{name}</span>
                 </button>
               ))}
-              <div className="w-px h-6 bg-border mx-1" />
+              <div className="mx-1 h-6 w-px shrink-0 bg-border" />
               <ExportButton selectedIndex={selectedIndex} />
             </div>
           </div>
@@ -126,7 +126,7 @@ const PredictionsPageNew = () => {
       </header>
 
       {/* Main content */}
-      <div className="p-6 space-y-6">
+      <div className="space-y-4 p-4 md:space-y-6 md:p-6">
         {/* Status Badges */}
         <div className="flex items-center gap-2 justify-end -mb-2">
           {divergenceDetected && (

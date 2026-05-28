@@ -47,22 +47,20 @@ const FactorsPage = () => {
 
   return (
     <DashboardLayout>
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-30">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">
-                Factor <span className="text-gradient">Analysis</span>
-              </h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                PCA decomposition — how market variance is structured across components and regimes
-              </p>
-            </div>
+      <header className="sticky top-14 z-20 border-b border-border bg-card/50 backdrop-blur-sm md:top-0 md:z-30">
+        <div className="px-4 py-3 md:px-6 md:py-4">
+          <div>
+            <h1 className="text-xl font-bold tracking-tight md:text-2xl">
+              Factor <span className="text-gradient">Analysis</span>
+            </h1>
+            <p className="mt-1 text-xs text-muted-foreground md:text-sm">
+              PCA decomposition — how market variance is structured across components and regimes
+            </p>
           </div>
         </div>
       </header>
 
-      <div className="p-6 space-y-6">
+      <div className="space-y-4 p-4 md:space-y-6 md:p-6">
         {/* Row 1: Stat Cards */}
         {isLoading ? (
           <div className="flex items-center justify-center h-24">

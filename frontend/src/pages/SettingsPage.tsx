@@ -64,15 +64,15 @@ const SettingsPage = () => {
   return (
     <DashboardLayout>
       {/* Header */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-30">
-        <div className="px-6 py-4">
+      <header className="sticky top-14 z-20 border-b border-border bg-card/50 backdrop-blur-sm md:top-0 md:z-30">
+        <div className="px-4 py-3 md:px-6 md:py-4">
           <div className="flex items-center gap-3">
-            <Settings className="h-5 w-5 text-primary" />
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">
+            <Settings className="h-5 w-5 shrink-0 text-primary" />
+            <div className="min-w-0">
+              <h1 className="text-xl font-bold tracking-tight md:text-2xl">
                 <span className="text-gradient">Settings</span>
               </h1>
-              <p className="text-sm text-muted-foreground mt-0.5">
+              <p className="mt-0.5 text-xs text-muted-foreground md:text-sm">
                 Appearance and platform information
               </p>
             </div>
@@ -80,7 +80,7 @@ const SettingsPage = () => {
         </div>
       </header>
 
-      <div className="p-6 space-y-5">
+      <div className="space-y-4 p-4 md:space-y-5 md:p-6">
 
         {/* ── Appearance — full width ──────────────────────────────────────── */}
         <div className="rounded-xl border border-border bg-card p-5">

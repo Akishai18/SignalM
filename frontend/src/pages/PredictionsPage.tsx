@@ -30,19 +30,19 @@ const PredictionsPage = () => {
   return (
     <DashboardLayout>
       {/* Header */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-30">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">
+      <header className="sticky top-14 z-20 border-b border-border bg-card/50 backdrop-blur-sm md:top-0 md:z-30">
+        <div className="px-4 py-3 md:px-6 md:py-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="min-w-0">
+              <h1 className="text-xl font-bold tracking-tight md:text-2xl">
                 Regime <span className="text-gradient">Predictions</span>
               </h1>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="mt-1 text-xs text-muted-foreground md:text-sm">
                 Compare 4 prediction models: Markov, HMM, Random Forest, XGBoost
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-neon-cyan/10 text-neon-cyan">
+              <div className="flex items-center gap-1.5 rounded-full bg-neon-cyan/10 px-3 py-1.5 text-neon-cyan">
                 <Zap className="h-4 w-4" />
                 <span className="text-sm font-medium">
                   {modelData?.models?.length || 0} Models
@@ -54,7 +54,7 @@ const PredictionsPage = () => {
       </header>
 
       {/* Main content */}
-      <div className="p-6 space-y-6">
+      <div className="space-y-4 p-4 md:space-y-6 md:p-6">
         {/* Summary Metrics */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <MetricCard

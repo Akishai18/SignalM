@@ -102,15 +102,15 @@ const BacktesterPage = () => {
   return (
     <DashboardLayout>
       {/* Page header */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-30">
-        <div className="px-6 py-4">
+      <header className="sticky top-14 z-20 border-b border-border bg-card/50 backdrop-blur-sm md:top-0 md:z-30">
+        <div className="px-4 py-3 md:px-6 md:py-4">
           <div className="flex items-center gap-3">
-            <FlaskConical className="h-5 w-5 text-primary" />
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">
+            <FlaskConical className="h-5 w-5 shrink-0 text-primary" />
+            <div className="min-w-0">
+              <h1 className="text-xl font-bold tracking-tight md:text-2xl">
                 Regime <span className="text-gradient">Backtester</span>
               </h1>
-              <p className="text-sm text-muted-foreground mt-0.5">
+              <p className="mt-0.5 text-xs text-muted-foreground md:text-sm">
                 Test portfolio strategies driven by regime signals
               </p>
             </div>
@@ -119,7 +119,7 @@ const BacktesterPage = () => {
       </header>
 
       {/* Two-panel layout */}
-      <div className="flex flex-col lg:flex-row gap-6 p-6 items-start">
+      <div className="flex flex-col items-start gap-4 p-4 md:gap-6 md:p-6 lg:flex-row">
 
         {/* Left panel — configurator (40%) */}
         <div className="w-full lg:w-[40%] lg:sticky lg:top-[73px]">

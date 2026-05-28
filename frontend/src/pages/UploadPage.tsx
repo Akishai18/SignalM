@@ -85,20 +85,20 @@ export default function UploadPage() {
 
   return (
     <DashboardLayout>
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-30">
-        <div className="px-6 py-4">
+      <header className="sticky top-14 z-20 border-b border-border bg-card/50 backdrop-blur-sm md:top-0 md:z-30">
+        <div className="px-4 py-3 md:px-6 md:py-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">
+            <h1 className="text-xl font-bold tracking-tight md:text-2xl">
               My <span className="text-gradient">Data</span>
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="mt-1 text-xs text-muted-foreground md:text-sm">
               Upload your own market data for regime analysis
             </p>
           </div>
         </div>
       </header>
 
-      <div className="p-6 grid grid-cols-1 lg:grid-cols-[55fr_45fr] gap-6 items-start">
+      <div className="grid grid-cols-1 items-start gap-4 p-4 md:gap-6 md:p-6 lg:grid-cols-[55fr_45fr]">
         {/* Left: Upload area */}
         <div className="space-y-5">
           {/* Drop zone */}

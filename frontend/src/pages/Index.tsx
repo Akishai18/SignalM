@@ -69,22 +69,22 @@ const Index = () => {
   return (
     <DashboardLayout>
       {/* Header */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-30">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">
+      <header className="sticky top-14 z-20 border-b border-border bg-card/50 backdrop-blur-sm md:top-0 md:z-30">
+        <div className="px-4 py-3 md:px-6 md:py-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="min-w-0">
+              <h1 className="text-xl font-bold tracking-tight md:text-2xl">
                 <span className="text-gradient">SignalM</span>
               </h1>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="mt-1 text-xs text-muted-foreground md:text-sm">
                 Market Signals • Regime Detection & Prediction
               </p>
             </div>
-            <div className="flex items-center gap-2 text-sm">
-              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full ${healthData?.status === 'healthy' ? 'bg-neon-green/10 text-neon-green' : 'bg-destructive/10 text-destructive'}`}>
+            <div className="flex flex-wrap items-center gap-2 text-xs md:text-sm">
+              <div className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 ${healthData?.status === 'healthy' ? 'bg-neon-green/10 text-neon-green' : 'bg-destructive/10 text-destructive'}`}>
                 <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-current opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-current"></span>
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-current opacity-75"></span>
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-current"></span>
                 </span>
                 {healthData?.status === 'healthy' ? 'Live' : 'Offline'}
               </div>
@@ -97,7 +97,7 @@ const Index = () => {
       </header>
 
       {/* Main content */}
-      <div className="p-6 space-y-6">
+      <div className="space-y-4 p-4 md:space-y-6 md:p-6">
         {/* Index Comparison Grid - NEW! */}
         <IndexComparisonGrid />
 

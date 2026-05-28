@@ -122,26 +122,26 @@ const VolatilityPage = () => {
 
   return (
     <DashboardLayout>
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-30">
-        <div className="px-6 py-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">
+      <header className="sticky top-14 z-20 border-b border-border bg-card/50 backdrop-blur-sm md:top-0 md:z-30">
+        <div className="px-4 py-3 md:px-6">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="min-w-0">
+              <h1 className="text-xl font-bold tracking-tight md:text-2xl">
                 Volatility <span className="text-gradient">Regimes</span>
               </h1>
-              <p className="text-sm text-muted-foreground mt-0.5">
+              <p className="mt-0.5 text-xs text-muted-foreground md:text-sm">
                 Realized vol, VIX, and regime-conditioned risk analytics
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 md:gap-3">
               {/* Vol window selector */}
               <div className="flex items-center gap-1.5">
                 {VOL_WINDOWS.map(w => (
                   <button
                     key={w.value}
                     onClick={() => setVolWindow(w.value)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    className={`rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all md:px-3 md:text-sm ${
                       volWindow === w.value
                         ? 'bg-primary text-primary-foreground shadow-md'
                         : 'bg-muted text-muted-foreground hover:bg-muted/80'
@@ -154,9 +154,9 @@ const VolatilityPage = () => {
 
               {/* Current regime badge */}
               {currentRegime && (
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-muted/30">
-                  <div className="h-2 w-2 rounded-full animate-pulse" style={{ backgroundColor: regimeColor }} />
-                  <span className="text-sm font-medium" style={{ color: regimeColor }}>
+                <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-2.5 py-1.5 md:px-3">
+                  <div className="h-2 w-2 animate-pulse rounded-full" style={{ backgroundColor: regimeColor }} />
+                  <span className="text-xs font-medium md:text-sm" style={{ color: regimeColor }}>
                     {currentRegime.regime_name}
                   </span>
                   <span className="text-xs text-muted-foreground">· day {currentRegime.days_in_regime}</span>
@@ -167,7 +167,7 @@ const VolatilityPage = () => {
         </div>
       </header>
 
-      <div className="p-6 space-y-6">
+      <div className="space-y-4 p-4 md:space-y-6 md:p-6">
         {/* Row 1: Stat cards */}
         <div className="grid gap-6 lg:grid-cols-3">
           <StatCard

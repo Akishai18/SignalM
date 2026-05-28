@@ -63,8 +63,8 @@ export function RegimePerformanceTable({ symbol }: RegimePerformanceTableProps) 
       <CardContent>
         <div className="space-y-4">
           {/* Performance Table */}
-          <div className="rounded-md border overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto rounded-md border">
+            <table className="w-full min-w-[560px] text-sm">
               <thead className="bg-muted/50">
                 <tr>
                   <th className="text-left p-3 font-medium">Regime</th>
