@@ -1,11 +1,10 @@
 {
-  "last_refresh_utc": "2026-06-08T12:27:21.208024+00:00",
-  "completed_utc": "2026-06-08T12:27:30.172459+00:00",
+  "last_refresh_utc": "2026-06-09T10:59:06.362319+00:00",
+  "completed_utc": "2026-06-09T10:59:15.385692+00:00",
   "data_through": "2026-06-08",
-  "total_rows_added": 13,
+  "total_rows_added": 12,
   "tickers_updated": [
     "SPY",
-    "VIX",
     "XLB",
     "XLC",
     "XLE",
