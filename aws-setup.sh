@@ -4,7 +4,7 @@
 # Safe to re-run; "EntityAlreadyExists" errors just mean that step was already done.
 
 ACCOUNT_ID=209113729339
-REPO="Akishai18/Quant_Project_1"
+REPO="Akishai18/SignalM"
 
 echo "=== 1/4 GitHub OIDC provider ==="
 aws iam create-open-id-connect-provider \
