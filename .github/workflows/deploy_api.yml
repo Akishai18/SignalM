@@ -1,0 +1,93 @@
+name: Deploy API to ECS Express
+
+# Builds the Docker image, pushes it to ECR, and deploys to ECS Express Mode.
+# The deploy action creates the service (ALB, TLS, auto-scaling) on first run
+# and updates it on subsequent runs.
+#
+# Triggered by:
+#   - pushes to main (code or data changes)
+#   - the daily_refresh workflow via workflow_call — required because pushes
+#     made with GITHUB_TOKEN do NOT fire `on: push` workflows
+#   - manual runs from the Actions tab
+#
+# Requires repo variables: AWS_REGION, AWS_DEPLOY_ROLE_ARN,
+#   ECS_EXECUTION_ROLE_ARN, ECS_INFRA_ROLE_ARN
+# Requires repo secrets: SUPABASE_URL, SUPABASE_SERVICE_KEY
+# See docs/AWS_DEPLOY.md for the one-time setup.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'frontend/**'
+      - 'docs/**'
+      - '**.md'
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  id-token: write   # OIDC auth to AWS
+  contents: read
+
+env:
+  ECR_REPOSITORY: signalm-api
+  SERVICE_NAME: signalm-api
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-api
+      cancel-in-progress: false
+
+    steps:
+      # Always deploy the tip of main: when called from daily_refresh, the
+      # triggering commit predates the data commit the refresh job just pushed
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image
+        id: build
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          TAG=$(git rev-parse --short HEAD)
+          docker build -t "$ECR_REGISTRY/$ECR_REPOSITORY:$TAG" .
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$TAG"
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy to ECS Express Mode
+        uses: aws-actions/amazon-ecs-deploy-express-service@v1
+        with:
+          service-name: ${{ env.SERVICE_NAME }}
+          image: ${{ steps.build.outputs.image }}
+          execution-role-arn: ${{ vars.ECS_EXECUTION_ROLE_ARN }}
+          infrastructure-role-arn: ${{ vars.ECS_INFRA_ROLE_ARN }}
+          container-port: 8080
+          health-check-path: /
+          # Matches the Render instance (512 MB was enough). Fargate's 0.5 vCPU
+          # tier requires >= 1 GB, so 0.25 vCPU is the pair 512 MB allows
+          cpu: '256'
+          memory: '512'
+          min-task-count: 1
+          max-task-count: 2
+          auto-scaling-metric: AVERAGE_CPU
+          auto-scaling-target-value: 70
+          environment-variables: |
+            [
+              {"name": "SUPABASE_URL", "value": "${{ secrets.SUPABASE_URL }}"},
+              {"name": "SUPABASE_SERVICE_KEY", "value": "${{ secrets.SUPABASE_SERVICE_KEY }}"},
+              {"name": "PYTHONUNBUFFERED", "value": "1"}
+            ]

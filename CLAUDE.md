@@ -35,9 +35,18 @@ Pipeline: Data ingestion → Feature engineering → K-Means clustering → REST
 - Branch `whatif` has what-if scenario analysis feature (not yet merged)
 
 ## Current Branch
-`more-improvements` (branched from `main`)
+`main`
 
-## Recent Work (as of 2026-04-03)
+## Deployment
+- **Frontend:** Vercel; resolves backend via `VITE_API_URL` env var (`frontend/src/lib/api.ts`)
+- **Backend:** migrating Render → **AWS ECS Express Mode** (Aug 2026, free AWS credits until ~Feb 2027; App Runner closed to new customers Apr 2026). `Dockerfile` at root, deployed by `.github/workflows/deploy_api.yml` (ECR + `amazon-ecs-deploy-express-service`, OIDC auth). Guide: `docs/AWS_DEPLOY.md`
+- **Data refresh:** `.github/workflows/daily_refresh.yml` commits fresh data weekday mornings, then calls `deploy_api.yml` via workflow_call (GITHUB_TOKEN pushes don't trigger `on: push`) — the redeploy is what serves new data
+- API env vars: `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`
+
+## Recent Work (as of 2026-08-18)
+- **AWS migration prep** (Aug 18): Added `Dockerfile`, `.dockerignore`, `.github/workflows/deploy_api.yml`, `docs/AWS_DEPLOY.md`; chained deploy into `daily_refresh.yml`.
+
+## Earlier Work (2026-04-03)
 - **data page updates** (Apr 2): Overhauled all 5 custom dataset dashboard tabs — CustomFactorsTab, CustomPerformanceTab, CustomPredictionsTab, CustomRegimeHistoryTab, CustomRegimeOverviewTab. Also updated `api/utils/file_parser.py`.
 - **backtest updates** (Mar 28): Refactored BacktestConfigurator and BacktestSummaryCards components.
 - **prediction updates** (Mar 28): Updated CustomHorizonPredictor, added `frontend/src/lib/ensemble.ts`, refactored PredictionsPageNew.

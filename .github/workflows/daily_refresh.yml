@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write   # needed to git push updated data files
+    outputs:
+      changed: ${{ steps.commit.outputs.changed }}
 
     steps:
       - name: Checkout repo
@@ -32,11 +34,27 @@ jobs:
         run: python scripts/refresh_pipeline.py
 
       - name: Commit and push updated data
+        id: commit
         run: |
           git config user.name "SignalM Bot"
           git config user.email "bot@signalm.app"
           git add data/ regime_results/ precomputed/
-          git diff --cached --quiet && echo "No changes to commit (holiday/weekend)" || (
-            git commit -m "chore: daily data refresh $(date -u +%Y-%m-%d)" &&
+          if git diff --cached --quiet; then
+            echo "No changes to commit (holiday/weekend)"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            git commit -m "chore: daily data refresh $(date -u +%Y-%m-%d)"
             git push
-          )
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Pushes made with GITHUB_TOKEN don't trigger `on: push` workflows, so the
+  # API deploy (which bakes the fresh data into the image) is called directly
+  deploy:
+    needs: refresh
+    if: needs.refresh.outputs.changed == 'true'
+    permissions:
+      id-token: write
+      contents: read
+    uses: ./.github/workflows/deploy_api.yml
+    secrets: inherit
