@@ -1,8 +1,8 @@
 {
-  "last_refresh_utc": "2026-08-17T08:40:53.162638+00:00",
-  "completed_utc": "2026-08-17T08:41:02.101872+00:00",
-  "data_through": "2026-08-17",
-  "total_rows_added": 13,
+  "last_refresh_utc": "2026-08-19T08:34:46.848368+00:00",
+  "completed_utc": "2026-08-19T08:34:55.788723+00:00",
+  "data_through": "2026-08-19",
+  "total_rows_added": 26,
   "tickers_updated": [
     "SPY",
     "VIX",
