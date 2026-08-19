@@ -94,7 +94,7 @@ EOF
 aws iam create-role --role-name signalm-ecs-infrastructure \
   --assume-role-policy-document file:///tmp/ecs-infra-trust.json
 aws iam attach-role-policy --role-name signalm-ecs-infrastructure \
-  --policy-arn arn:aws:iam::aws:policy/AmazonECSInfrastructureRoleforExpressGatewayServices
+  --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSInfrastructureRoleforExpressGatewayServices
 
 echo
 echo "=== Done. Roles: ==="

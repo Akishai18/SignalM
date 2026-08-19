@@ -106,7 +106,7 @@ aws iam attach-role-policy --role-name signalm-ecs-execution \
 aws iam create-role --role-name signalm-ecs-infrastructure \
   --assume-role-policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"ecs.amazonaws.com"},"Action":"sts:AssumeRole"}]}'
 aws iam attach-role-policy --role-name signalm-ecs-infrastructure \
-  --policy-arn arn:aws:iam::aws:policy/AmazonECSInfrastructureRoleforExpressGatewayServices
+  --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSInfrastructureRoleforExpressGatewayServices
 ```
 
 ### 4. GitHub repo settings (Settings → Secrets and variables → Actions)
