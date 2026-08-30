@@ -39,7 +39,7 @@ Pipeline: Data ingestion → Feature engineering → K-Means clustering → REST
 
 ## Deployment
 - **Frontend:** Vercel; resolves backend via `VITE_API_URL` env var (`frontend/src/lib/api.ts`)
-- **Backend:** migrating Render → **AWS ECS Express Mode** (Aug 2026, free AWS credits until ~Feb 2027; App Runner closed to new customers Apr 2026). `Dockerfile` at root, deployed by `.github/workflows/deploy_api.yml` (ECR + `amazon-ecs-deploy-express-service`, OIDC auth). Guide: `docs/AWS_DEPLOY.md`
+- **Backend:** **AWS Lightsail Containers** (`signalm-api`, nano $7/mo; Aug 2026). `Dockerfile` at root, deployed by `.github/workflows/deploy_api.yml` (build → ECR → `lightsail create-container-service-deployment`, OIDC auth). Chosen over ECS Express (~$50/mo ALB overhead) and App Runner (closed to new customers Apr 2026). Guide: `docs/AWS_DEPLOY.md`
 - **Data refresh:** `.github/workflows/daily_refresh.yml` commits fresh data weekday mornings, then calls `deploy_api.yml` via workflow_call (GITHUB_TOKEN pushes don't trigger `on: push`) — the redeploy is what serves new data
 - API env vars: `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`
 

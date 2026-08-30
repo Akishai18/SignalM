@@ -1,8 +1,7 @@
-name: Deploy API to ECS Express
+name: Deploy API to Lightsail
 
-# Builds the Docker image, pushes it to ECR, and deploys to ECS Express Mode.
-# The deploy action creates the service (ALB, TLS, auto-scaling) on first run
-# and updates it on subsequent runs.
+# Builds the Docker image, pushes it to ECR, and deploys it to the Lightsail
+# container service (created once by aws-lightsail-setup.sh).
 #
 # Triggered by:
 #   - pushes to main (code or data changes)
@@ -10,8 +9,7 @@ name: Deploy API to ECS Express
 #     made with GITHUB_TOKEN do NOT fire `on: push` workflows
 #   - manual runs from the Actions tab
 #
-# Requires repo variables: AWS_REGION, AWS_DEPLOY_ROLE_ARN,
-#   ECS_EXECUTION_ROLE_ARN, ECS_INFRA_ROLE_ARN
+# Requires repo variables: AWS_REGION, AWS_DEPLOY_ROLE_ARN
 # Requires repo secrets: SUPABASE_URL, SUPABASE_SERVICE_KEY
 # See docs/AWS_DEPLOY.md for the one-time setup.
 
@@ -68,26 +66,44 @@ jobs:
           docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$TAG"
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$TAG" >> "$GITHUB_OUTPUT"
 
-      - name: Deploy to ECS Express Mode
-        uses: aws-actions/amazon-ecs-deploy-express-service@v1
-        with:
-          service-name: ${{ env.SERVICE_NAME }}
-          image: ${{ steps.build.outputs.image }}
-          execution-role-arn: ${{ vars.ECS_EXECUTION_ROLE_ARN }}
-          infrastructure-role-arn: ${{ vars.ECS_INFRA_ROLE_ARN }}
-          container-port: 8080
-          health-check-path: /
-          # Matches the Render instance (512 MB was enough). Fargate's 0.5 vCPU
-          # tier requires >= 1 GB, so 0.25 vCPU is the pair 512 MB allows
-          cpu: '256'
-          memory: '512'
-          min-task-count: 1
-          max-task-count: 2
-          auto-scaling-metric: AVERAGE_CPU
-          auto-scaling-target-value: 70
-          environment-variables: |
-            [
-              {"name": "SUPABASE_URL", "value": "${{ secrets.SUPABASE_URL }}"},
-              {"name": "SUPABASE_SERVICE_KEY", "value": "${{ secrets.SUPABASE_SERVICE_KEY }}"},
-              {"name": "PYTHONUNBUFFERED", "value": "1"}
-            ]
+      - name: Deploy to Lightsail
+        env:
+          IMAGE: ${{ steps.build.outputs.image }}
+        run: |
+          cat > /tmp/containers.json <<EOF
+          {
+            "api": {
+              "image": "$IMAGE",
+              "ports": { "8080": "HTTP" },
+              "environment": {
+                "SUPABASE_URL": "${{ secrets.SUPABASE_URL }}",
+                "SUPABASE_SERVICE_KEY": "${{ secrets.SUPABASE_SERVICE_KEY }}",
+                "PYTHONUNBUFFERED": "1"
+              }
+            }
+          }
+          EOF
+          cat > /tmp/endpoint.json <<EOF
+          {
+            "containerName": "api",
+            "containerPort": 8080,
+            "healthCheck": { "path": "/", "successCodes": "200" }
+          }
+          EOF
+          aws lightsail create-container-service-deployment \
+            --service-name "$SERVICE_NAME" \
+            --containers file:///tmp/containers.json \
+            --public-endpoint file:///tmp/endpoint.json
+
+      - name: Wait for deployment to go live
+        run: |
+          for i in $(seq 1 60); do
+            STATE=$(aws lightsail get-container-services --service-name "$SERVICE_NAME" \
+              --query 'containerServices[0].state' --output text)
+            echo "state: $STATE"
+            if [ "$STATE" = "RUNNING" ]; then exit 0; fi
+            if [ "$STATE" = "FAILED" ]; then exit 1; fi
+            sleep 15
+          done
+          echo "Timed out waiting for deployment to stabilize"
+          exit 1
