@@ -1,10 +1,22 @@
 {
-  "last_refresh_utc": "2026-08-28T19:53:54.666609+00:00",
-  "completed_utc": "2026-08-28T19:54:01.145361+00:00",
-  "data_through": "2026-08-28",
-  "total_rows_added": 2,
+  "last_refresh_utc": "2026-08-31T15:50:57.045658+00:00",
+  "completed_utc": "2026-08-31T15:51:07.580026+00:00",
+  "data_through": "2026-08-31",
+  "total_rows_added": 25,
   "tickers_updated": [
-    "VIX"
+    "SPY",
+    "VIX",
+    "XLB",
+    "XLC",
+    "XLE",
+    "XLF",
+    "XLI",
+    "XLK",
+    "XLP",
+    "XLRE",
+    "XLU",
+    "XLV",
+    "XLY"
   ],
   "index_regimes_succeeded": [
     "SPY",
@@ -13,6 +25,6 @@
     "IWM"
   ],
   "index_regimes_failed": [],
-  "pipeline_duration_seconds": 6.5,
+  "pipeline_duration_seconds": 10.5,
   "success": true
 }
