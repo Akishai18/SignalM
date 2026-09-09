@@ -1,10 +1,11 @@
 {
-  "last_refresh_utc": "2026-09-08T12:37:29.687468+00:00",
-  "completed_utc": "2026-09-08T12:37:38.249611+00:00",
-  "data_through": "2026-09-07",
-  "total_rows_added": 12,
+  "last_refresh_utc": "2026-09-09T12:44:38.173034+00:00",
+  "completed_utc": "2026-09-09T12:44:50.736663+00:00",
+  "data_through": "2026-09-09",
+  "total_rows_added": 14,
   "tickers_updated": [
     "SPY",
+    "VIX",
     "XLB",
     "XLC",
     "XLE",
@@ -24,6 +25,6 @@
     "IWM"
   ],
   "index_regimes_failed": [],
-  "pipeline_duration_seconds": 8.6,
+  "pipeline_duration_seconds": 12.6,
   "success": true
 }
