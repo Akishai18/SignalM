@@ -33,6 +33,7 @@ Pipeline: Data ingestion → Feature engineering → K-Means clustering → REST
 ## Known Issues / History
 - Markov evaluation fixed to use a train-only transition matrix on the held-out 30% (see `docs/ACCURACY_FIX.md`). Saved test accuracy is still ~99.8% because regimes persist; HMM is the ~48% model.
 - Branches `whatif` and `more-improvements` are fully merged into main (verified 2026-09-10)
+- Git history rewritten 2026-09-11 (`git-filter-repo`): 61 commit messages reworded, one empty commit pruned, root reorganized (AWS scripts in `scripts/aws/`, `ACCURACY_FIX.md` in `docs/`, `.env.example` template). File contents unchanged; commit hashes from before that date no longer resolve.
 
 ## Key Architecture Facts (full-repo audit 2026-09-10)
 - **Two regime label systems.** Market-wide K4 labels (`regime_results/regime_labels_k4.csv`, 500-stock features, frozen 2024-12-20, mean durations 135-285d) feed `/api/regimes/*`, `/api/pca/*`, model training, and precomputed predictions. Per-index labels (`regime_results/indices/*_regimes.csv`, single-ticker vol/momentum/RSI features, refit daily) feed `/api/indices/*`, the backtester, volatility page, correlation overlay, and transitions. SPY per-index Calm lasts ~15d on average. Per-index cluster ids can permute after a refit; names come from a fixed id→name dict.
