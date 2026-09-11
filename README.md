@@ -1,558 +1,267 @@
-# SignalM - Market Regime Detection & Prediction
+# SignalM
 
-![Python](https://img.shields.io/badge/Python-3.9%2B-blue)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.0%2B-blue)
-![React](https://img.shields.io/badge/React-18.3-61dafb)
+**Market regime detection and prediction, from research to a live platform.**
+
+[![Live](https://img.shields.io/badge/Live-signalm.ca-00e5a0)](https://signalm.ca)
+![Python](https://img.shields.io/badge/Python-3.11-blue)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
+![React](https://img.shields.io/badge/React-18-61dafb)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688)
 ![License](https://img.shields.io/badge/License-MIT-green)
-![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)
 
-## 📖 Overview
+SignalM identifies the current market regime (Calm, Crisis, Elevated Stress, Transition) across major US equity indices and forecasts regime transitions at horizons from one day to three years. It began as a two-month quantitative research study on 500+ S&P 500 constituents and is now a full-stack platform with daily data refresh, a regime-aware backtester, and the ability to run the same analysis on a user's own price data.
 
-**SignalM** is a full-stack quantitative finance application that identifies distinct market states (Calm, Crisis, Elevated Stress, Transition) from historical equity data and predicts future regime transitions using machine learning. Built with Python, TypeScript, and modern ML frameworks, this system provides real-time regime analysis through an interactive web dashboard backed by a production-ready REST API.
+**Live:** [signalm.ca](https://signalm.ca) (guest access available, no sign-up required)
 
-The platform analyzes 500+ S&P 500 constituents (2012-2024) to extract market structure features—realized volatility, cross-sectional correlation, PCA-based dimensionality—and uses unsupervised learning (K-means) to categorize regimes. Four prediction models (Markov chains, Hidden Markov Models, Random Forest, XGBoost) forecast regime transitions at 1-day, 7-day, and 30-day horizons with comprehensive accuracy validation.
-
-**Live Demo:** *(Deployment in progress)*
-**API Docs:** http://localhost:8000/docs (when running locally)
+![SignalM dashboard](docs/images/dashboard.png)
 
 ---
 
-## 🎯 Key Features
+## What it does
 
-### **End-to-End ML Pipeline**
-- ✅ Automated data processing for 500+ equities (2012-2024)
-- ✅ Feature engineering: volatility, correlation, PCA metrics
-- ✅ Unsupervised regime detection (K-means, K=4)
-- ✅ 4 prediction models with honest accuracy evaluation
-- ✅ Chronological train/test validation (no data leakage)
+| Page | What you get |
+|------|--------------|
+| **Dashboard** | Current regime for SPY, QQQ, DIA, and IWM with price and volatility, a market-wide consensus, VIX, and the structural metrics behind the regime call (average correlation, volatility dispersion, effective dimension). |
+| **Predictions** | Four models per index (Markov chain, Hidden Markov Model, Random Forest, XGBoost) at 11 trained horizons from 1 to 365 days, an HMM-weighted ensemble, custom horizons up to 1,095 days, transition heatmap, expected regime durations, projected regime trajectory, a what-if tool that reprices predictions under adjusted market features, backtest of predicted vs. actual regimes, and CSV export. |
+| **Backtester** | Regime-conditioned allocations across SPY, 11 sector ETFs, and cash. Set a different portfolio per regime, transaction costs, and a date range; get an equity curve vs. SPY, Sharpe, CAGR, max drawdown, Calmar, win rate, rebalance count, and a per-regime attribution. Fully vectorized, runs a decade of daily rebalancing in well under a second. |
+| **Correlation Matrix** | Sector ETF correlation matrix, rolling correlations, regime-conditioned correlations, PCA structure, and drill-down on any sector pair. |
+| **Volatility Regimes** | Regime-conditioned risk and return statistics per index, with regime overlays on price history. |
+| **Factor Analysis** | PCA structure of the market: explained variance, loadings, component time series, and per-regime factor scores. |
+| **My Data** | Upload your own price data (CSV wide or long, Excel, or JSON). SignalM runs the full pipeline on it: feature engineering, K-Means regime detection with volatility-ranked labels, transition analysis, performance by regime, and Markov/HMM predictions, presented in a five-tab dashboard. Datasets persist per user. |
 
-### **Production-Ready Backend**
-- ✅ FastAPI REST API (10 endpoints)
-- ✅ Real-time regime state & predictions
-- ✅ Model comparison metrics
-- ✅ CORS-enabled for frontend integration
-- ✅ Comprehensive error handling
+**Live data.** A scheduled GitHub Actions workflow runs every weekday morning: it fetches new prices incrementally, refits per-index regimes, rebuilds derived datasets, precomputes the expensive API responses, and redeploys the API. The UI shows data freshness from `/api/refresh/status`.
 
-### **Interactive Frontend Dashboard**
-- ✅ React + TypeScript with shadcn/ui components
-- ✅ Live regime visualization & metrics
-- ✅ Model performance comparison table
-- ✅ Multi-horizon forecast display
-- ✅ Auto-refreshing data (30-60s intervals)
-
-### **Rigorous Evaluation**
-- ✅ 99.54% accuracy (Markov baseline)
-- ✅ 91.06% accuracy (Random Forest, feature-only)
-- ✅ Comprehensive FINDINGS.md analysis
-- ✅ 10 prediction visualizations (confusion matrices, timelines)
+**Accounts.** Supabase email/password auth with protected routes and JWT verification on the API. A guest mode opens every analysis page without an account; uploads require sign-in.
 
 ---
 
-## 🛠 Tech Stack
-
-### **Backend (Python)**
-- **Core:** Python 3.9+, NumPy, Pandas
-- **ML:** scikit-learn, XGBoost, hmmlearn
-- **API:** FastAPI, Uvicorn, Pydantic
-- **Analysis:** SciPy, UMAP, Matplotlib, Seaborn
-
-### **Frontend (TypeScript)**
-- **Framework:** React 18, TypeScript 5.0, Vite
-- **UI:** shadcn/ui, Radix UI, Tailwind CSS
-- **Data:** TanStack Query (React Query)
-- **Charts:** Recharts
-- **Routing:** React Router v6
-
-### **Infrastructure**
-- **API Server:** FastAPI + Uvicorn
-- **Dev Server:** Vite (HMR)
-- **Data Storage:** CSV files (regime_results/)
-- **Future:** PostgreSQL, AWS deployment
-
----
-
-## 🚀 Quick Start
-
-### **Prerequisites**
-```bash
-# Python 3.9+ and Node.js 18+ required
-python --version  # Should be 3.9+
-node --version    # Should be 18+
-```
-
-### **1. Clone Repository**
-```bash
-git clone https://github.com/yourusername/signalm.git
-cd signalm
-```
-
-### **2. Backend Setup**
-```bash
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run regime detection (first time only, ~2-3 minutes)
-PYTHONPATH=src python src/regime/run_regime_clustering.py
-
-# Start API server
-uvicorn api.main:app --reload --port 8000
-```
-
-**Verify:** http://localhost:8000/api/health should return `{"status":"healthy"}`
-
-### **3. Frontend Setup**
-```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Start dev server
-npm run dev
-```
-
-**Access:** http://localhost:5173 (or http://localhost:8080)
-
----
-
-## 📊 System Architecture
+## How it works
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    CSV Data (2012-2024)                     │
-│                 500+ S&P 500 Constituents                   │
-└────────────────────┬────────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────────┐
-│              Feature Engineering Pipeline                    │
-│  - Rolling volatility (252d)                                │
-│  - Cross-sectional correlation                              │
-│  - PCA eigenvalues & variance explained                     │
-│  - Effective dimension (eigenvalue concentration)           │
-└────────────────────┬────────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────────┐
-│           Unsupervised Regime Detection (K=4)               │
-│  - K-means clustering on normalized features                │
-│  - Regimes: Calm, Crisis, Elevated Stress, Transition       │
-│  - Validation: persistence, UMAP, economic monotonicity     │
-└────────────────────┬────────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────────┐
-│              Prediction Models (4 methods)                   │
-│  1. Markov Chain Baseline (99.54% accuracy)                 │
-│  2. Hidden Markov Model (86.33% feature-inferred)           │
-│  3. Random Forest (91.06% feature-only)                     │
-│  4. XGBoost (81.81% feature-only)                           │
-└────────────────────┬────────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────────┐
-│                  FastAPI Backend (10 endpoints)              │
-│  /api/regimes/current    - Current regime state             │
-│  /api/regimes/history    - Historical timeline              │
-│  /api/predictions/forecast - 1/7/30-day predictions         │
-│  /api/predictions/comparison - Model rankings               │
-│  /api/metrics/summary    - Dashboard metrics                │
-│  /api/features/importance - Feature rankings                │
-└────────────────────┬────────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────────┐
-│            React Dashboard (localhost:5173)                  │
-│  - Live regime state & confidence                           │
-│  - Model comparison table                                   │
-│  - Multi-horizon forecasts                                  │
-│  - Feature importance charts                                │
-│  - Correlation heatmaps                                     │
-└─────────────────────────────────────────────────────────────┘
+500+ S&P 500 constituents, sector ETFs, VIX (2012 to present)
+        │
+        ▼
+Feature engineering ──── rolling volatility, dispersion, pairwise correlation
+        │                (21 / 63 / 126 / 252 day windows), PCA variance share,
+        │                cumulative variance, effective dimension
+        ▼
+K-Means regime detection (K = 4) ──── validated against drawdowns, known
+        │                             events, UMAP structure, persistence
+        ▼
+Prediction models ──── Markov chain, HMM, Random Forest, XGBoost
+        │              trained per index at 11 horizons, chronological split
+        ▼
+Offline precompute ──── models and heavy analytics served as static JSON
+        │
+        ▼
+FastAPI ──── 6 routers: predictions, backtester, correlations, PCA,
+        │    custom data, refresh status (plus regimes, market, indices)
+        ▼
+React dashboard ──── Vite, TanStack Query, shadcn/ui, Recharts
 ```
 
 ---
 
-## 🧮 Regime Detection Methodology
+## Research
 
-### **Feature Space (6 dimensions)**
+The platform is built on a research phase that ran before any application code was written. The full write-up is in [`docs/FINDINGS.md`](docs/FINDINGS.md); the PCA interpretation is in [`docs/pca_interpretation.md`](docs/pca_interpretation.md).
+
+### Feature space
 
 | Feature | Description | Formula |
 |---------|-------------|---------|
-| **avg_vol_252** | Realized volatility (annualized) | σ = √(252 × Var(R)) |
-| **vol_dispersion** | Cross-sectional volatility spread | std(σ₁, σ₂, ..., σₙ) |
-| **avg_correlation** | Mean pairwise correlation | avg(ρᵢⱼ) for i≠j |
-| **pc1_var** | PC1 variance explained | λ₁ / Σλᵢ |
-| **cum_var_3** | Cumulative variance (PC1-3) | (λ₁+λ₂+λ₃) / Σλᵢ |
-| **effective_dimension** | Eigenvalue concentration | exp(-Σ pᵢlog(pᵢ)) |
+| `avg_vol` | Average realized volatility (annualized) | σ = √(252 × Var(R)) |
+| `vol_dispersion` | Cross-sectional spread of volatility | std(σ₁, σ₂, …, σₙ) |
+| `avg_correlation` | Mean pairwise correlation | avg(ρᵢⱼ) for i ≠ j |
+| `pc1_var` | Variance explained by the first principal component | λ₁ / Σλᵢ |
+| `cum_var_3` | Cumulative variance of the first three components | (λ₁+λ₂+λ₃) / Σλᵢ |
+| `effective_dimension` | Eigenvalue concentration (participation ratio) | exp(−Σ pᵢ log pᵢ), pᵢ = λᵢ / Σλⱼ |
 
-Where:
-- **R** = daily log returns
-- **σᵢ** = volatility of asset i
-- **ρᵢⱼ** = correlation between assets i and j
-- **λᵢ** = i-th eigenvalue from PCA
-- **pᵢ** = normalized eigenvalue (λᵢ / Σλⱼ)
+A rising PC1 share and a falling effective dimension mean the market is collapsing onto a single risk-on/risk-off factor, which is the signature of stress.
 
-### **Identified Regimes**
+### Regimes
 
-| Regime | Label | % of Time | Mean Duration | Characteristics |
-|--------|-------|-----------|---------------|-----------------|
-| **0** | Calm | 61% | 285 days | Low vol (0.24), low corr (0.28), high dim (4.9) |
-| **1** | Crisis | 5% | 156 days | High vol (0.35), high corr (0.45), low dim (3.8) |
-| **2** | Elevated Stress | 17% | 142 days | Medium vol (0.28), medium corr (0.35) |
-| **3** | Transition | 17% | 135 days | Mixed characteristics, regime shifts |
+| Regime | % of time | Mean duration | Characteristics |
+|--------|-----------|---------------|-----------------|
+| **Calm** | 61% | 285 days | Low volatility (0.24), low correlation (0.28), high effective dimension (4.9) |
+| **Crisis** | 5% | 156 days | High volatility (0.35), high correlation (0.45), low effective dimension (3.8) |
+| **Elevated Stress** | 17% | 142 days | Medium volatility (0.28), medium correlation (0.35) |
+| **Transition** | 17% | 135 days | Mixed characteristics, sits between regimes |
 
-**Key Finding:** Regimes are highly persistent (280+ day mean duration) with only 15 transitions in 3,264 trading days, creating a fundamental prediction challenge.
+Regimes are highly persistent: only 15 switches in 3,264 trading days. Same-colored clusters that are disconnected in the UMAP embedding are the same regime recurring years apart.
 
----
+<p align="center">
+  <img src="regime_results/regime_transition_analysis/transition_matrix_k4.png" alt="Regime transition matrix" width="100%">
+</p>
 
-## 🎯 Prediction Model Results
+### Prediction results
 
-**Test Period:** 2021-2024 (30% holdout, chronological split)
+Test period 2021 to 2024, strictly chronological 70/30 split. Random Forest and XGBoost use 36 lagged market features and do **not** see the current regime.
 
-### **1-Day Horizon Accuracy**
+| Horizon | Markov baseline | HMM (features only) | Random Forest | XGBoost |
+|---------|-----------------|---------------------|---------------|---------|
+| **1-day** | 99.28% | 86.3% | **91.06%** | 81.81% |
+| **7-day** | 95.99% | | **83.21%** | 84.76% |
+| **30-day** | 92.32% | | **83.30%** | 76.87% |
 
-| Rank | Model | Accuracy | Confidence | Why It Works / Fails |
-|------|-------|----------|------------|---------------------|
-| 🥇 1 | **Markov Chain** | 99.54% | 99.54% | Regimes persist → "predict same" works |
-| 🥈 2 | **Random Forest** | 91.06% | 76.65% | Learns from vol dispersion + PCA |
-| 🥉 3 | **HMM** | 86.33% | 96.86% | Feature inference harder than labels |
-| 4 | **XGBoost** | 81.81% | 88.31% | Overfits on rare regimes (Crisis) |
+The Markov baseline is strong because regimes persist, so "predict the same regime" is itself a 99% one-day baseline. The interesting question is how much signal the features carry beyond that.
 
-### **Key Insights from FINDINGS.md**
+**Evaluating honestly.** Early results were inflated. The Markov chain had been scored on the same data used to fit its transition matrix, and the tree models had the current regime as a one-hot feature, which let them memorize the persistence baseline (Random Forest 99.28%, XGBoost 99.08%). Fitting transition matrices on the training window only and removing the current regime from the feature set produced the numbers above. They are lower and far more useful: volatility dispersion and PCA concentration are the top predictors, and 5- and 21-day lags outperform 1-day lags for catching transitions. Details in [`docs/ACCURACY_FIX.md`](docs/ACCURACY_FIX.md).
 
-✅ **Markov baseline is surprisingly effective** due to high regime persistence (280+ day duration)
-✅ **Feature-based signals exist** but add only modest value beyond "predict same regime"
-✅ **Volatility dispersion** (12.1% importance) and **PCA concentration** (7.8%) are top predictors
-✅ **Lagged features** (5-day, 21-day) outperform 1-day lags for detecting regime transitions
-⚠️ **Rare regimes hard to predict:** Elevated Stress only 77% avg accuracy (only 7 test samples)
-
-### **Multi-Horizon Performance**
-
-| Horizon | Markov | HMM | Random Forest | XGBoost |
-|---------|--------|-----|---------------|---------|
-| 1-day   | 99.54% | 86.33% | 91.06% | 81.81% |
-| 7-day   | 95.99% | ~92% | 83.21% | 84.76% |
-| 30-day  | 92.32% | ~89% | 83.30% | 76.87% |
+<p align="center">
+  <img src="regime_results/umap_by_regime_k4.png" alt="UMAP embedding colored by regime" width="70%">
+</p>
 
 ---
 
-## 📂 Project Structure
+## Tech stack
+
+| Layer | Technology |
+|-------|------------|
+| Research and ML | Python 3.11, NumPy, Pandas, scikit-learn, XGBoost, hmmlearn, UMAP, SciPy |
+| API | FastAPI, Pydantic v2, Uvicorn |
+| Frontend | React 18, TypeScript, Vite, TanStack Query, shadcn/ui, Radix, Tailwind, Recharts |
+| Auth and storage | Supabase (Auth, Storage) |
+| Data | yfinance, incremental daily fetch |
+| Hosting | Vercel (frontend), AWS Lightsail Containers (API, Docker) |
+| CI/CD | GitHub Actions: OIDC deploy to ECR and Lightsail, scheduled data refresh |
+| Tests | pytest (142 tests across the API, backtester, upload pipeline, and refresh pipeline) |
+
+---
+
+## Project structure
+
+```
+SignalM/
+├── api/                    # FastAPI application
+│   ├── main.py             # App, CORS, regime / market / index endpoints
+│   ├── routers/            # predictions, backtester, correlations, pca, custom_data, refresh_status
+│   ├── dependencies/       # Supabase JWT auth
+│   └── utils/              # backtest engine, custom-data pipeline, file parser, storage
+├── frontend/               # React + TypeScript dashboard (Vite)
+│   └── src/
+│       ├── pages/          # Dashboard, Predictions, Backtester, Correlation, Volatility, Factors, Upload, Auth, Settings
+│       ├── components/     # Page components and shadcn/ui primitives
+│       ├── hooks/          # TanStack Query data hooks
+│       └── lib/            # API client, ensemble weighting, Supabase client
+├── src/                    # Research and ML pipeline
+│   ├── analysis/           # Rolling statistics, PCA, PCA interpretation
+│   ├── regime/             # Feature engineering, K-Means, validation, transitions, model training, inference
+│   ├── data/               # Market data fetch, per-index regime detection
+│   └── visualization/      # EDA plots, UMAP
+├── scripts/
+│   ├── refresh_pipeline.py # Daily refresh: fetch, refit, rebuild, precompute
+│   ├── precompute.py       # Generate precomputed API responses
+│   ├── incremental_fetch.py
+│   └── aws/                # One-time AWS setup scripts
+├── models/                 # Trained models per index (SPY, QQQ, DIA, IWM)
+├── precomputed/            # Static JSON served by the API
+├── regime_results/         # Regime labels, validation charts, transition analysis
+├── pca_data/               # PCA components and loadings
+├── data/                   # Price data (S&P 500 constituents, indices, sector ETFs, VIX)
+├── tests/                  # pytest suite
+├── docs/                   # Findings, accuracy audit, API docs, deployment guide
+├── .github/workflows/      # deploy_api.yml, daily_refresh.yml
+├── Dockerfile
+└── requirements.txt
+```
+
+---
+
+## Running locally
+
+**Prerequisites:** Python 3.11+, Node.js 18+.
 
 ```bash
-signalm/
-├── api/                           # FastAPI backend
-│   ├── main.py                    # API application (10 endpoints)
-│   ├── routes/                    # Route modules
-│   └── test_api.py                # API testing script
-│
-├── frontend/                      # React dashboard
-│   ├── src/
-│   │   ├── pages/                 # Page components
-│   │   │   ├── Index.tsx          # Dashboard home
-│   │   │   ├── PredictionsPage.tsx # Model comparison
-│   │   │   ├── CorrelationPage.tsx
-│   │   │   ├── VolatilityPage.tsx
-│   │   │   └── FactorsPage.tsx
-│   │   ├── components/
-│   │   │   ├── dashboard/         # Dashboard components
-│   │   │   ├── predictions/       # Prediction components
-│   │   │   └── ui/                # shadcn/ui components
-│   │   ├── hooks/
-│   │   │   └── useRegimeData.ts   # TanStack Query hooks
-│   │   ├── lib/
-│   │   │   └── api.ts             # API client
-│   │   └── App.tsx                # Router config
-│   ├── package.json
-│   └── vite.config.ts
-│
-├── src/                           # Python ML pipeline
-│   ├── regime/
-│   │   ├── run_regime_clustering.py  # Main clustering pipeline
-│   │   ├── feature_engineering.py    # Feature computation
-│   │   ├── evaluate.py               # Clustering evaluation
-│   │   ├── visualize_regimes.py      # Regime visualizations
-│   │   ├── transitions.py            # Transition analysis
-│   │   ├── predict.py                # Markov baseline
-│   │   ├── hmm_predict.py            # HMM predictions
-│   │   ├── feature_predict.py        # RF/XGBoost predictions
-│   │   ├── evaluate_predictions.py   # Model comparison
-│   │   └── compare_predictions.py    # Unified evaluation
-│   ├── analyze.py                 # Statistical computations
-│   ├── display.py                 # Console output
-│   ├── visualize.py               # EDA plots
-│   └── main.py                    # Pipeline orchestration
-│
-├── data/                          # Raw data
-│   ├── sp500_stocks.csv           # Historical prices
-│   ├── sp500_companies.csv        # Company metadata
-│   └── sp500_index.csv            # Index data
-│
-├── regime_results/                # Output artifacts
-│   ├── regime_labels_k4.csv       # Regime assignments
-│   ├── regime_features_normalized.csv
-│   ├── clustering_evaluation.csv
-│   ├── prediction_visualizations/ # 10 model viz PNGs
-│   └── regime_transition_analysis/
-│
-├── pca_data/                      # PCA results
-│   ├── pca_components.csv
-│   └── pca_loadings.csv
-│
-├── requirements.txt               # Python dependencies
-├── FINDINGS.md                    # Comprehensive results analysis
-├── API_README.md                  # API documentation
-├── INTEGRATION_COMPLETE.md        # Frontend integration guide
-├── PHASE_4_COMPLETE.md            # Prediction dashboard docs
-└── README.md                      # This file
+git clone https://github.com/Akishai18/SignalM.git
+cd SignalM
 ```
 
----
+**Backend**
 
-## 🔬 Mathematical Foundation
-
-### **Covariance & Correlation**
-
-Rolling covariance matrix **Σ** over window **W**:
-
-```
-Σ_W = (1/(W-1)) × Σ(t=1 to W) [(R_t - R̄)(R_t - R̄)ᵀ]
-```
-
-Correlation matrix provides scale-invariant co-movement metrics.
-
-### **Principal Component Analysis (PCA)**
-
-Eigenvalue decomposition of correlation matrix **C**:
-
-```
-C × v = λ × v
-```
-
-Where:
-- **v** = eigenvector (factor loadings)
-- **λ** = eigenvalue (variance explained)
-
-**Interpretation:**
-- High **λ₁** → correlated "risk-on/risk-off" market
-- Rising PC1 ratio → increasing systemic risk
-
-### **Effective Dimension (Participation Ratio)**
-
-Eigenvalue concentration metric:
-
-```
-D_eff = exp(-Σ pᵢ log(pᵢ))
-```
-
-Where **pᵢ = λᵢ / Σλⱼ** (normalized eigenvalues)
-
-**Interpretation:**
-- **D_eff = N** → perfect diversification (all eigenvalues equal)
-- **D_eff = 1** → one dominant factor (systemic crisis)
-
----
-
-## 📈 API Endpoints
-
-### **Regime State**
 ```bash
-GET /api/regimes/current
-# Returns: Current regime (Calm/Crisis/etc.), confidence, days in regime
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
 
-GET /api/regimes/history?limit=1000
-# Returns: Historical regime labels with dates
+cp .env.example .env             # Supabase keys; only needed for auth and uploads
+uvicorn api.main:app --reload --port 8000
 ```
 
-### **Predictions**
-```bash
-GET /api/predictions/forecast
-# Returns: 1/7/30-day predictions with probabilities
+The API serves precomputed results out of the box. Interactive docs at http://localhost:8000/docs, health check at http://localhost:8000/api/health.
 
-GET /api/predictions/comparison
-# Returns: All 4 models ranked by accuracy
-```
+**Frontend**
 
-### **Analytics**
-```bash
-GET /api/metrics/summary
-# Returns: Correlation, volatility, dimension metrics
-
-GET /api/features/importance?model=random_forest&top_n=10
-# Returns: Top feature importances
-```
-
-**Full API Docs:** http://localhost:8000/docs (Swagger UI)
-
----
-
-## 🎨 Dashboard Features
-
-### **Main Dashboard** (`/`)
-- Current regime state (Calm, Crisis, etc.)
-- Real-time metrics (correlation, volatility, dimension)
-- Regime confidence gauge
-- Correlation heatmap
-- Top feature importances
-
-### **Predictions Page** (`/predictions`)
-- Model comparison table (4 models ranked)
-- Multi-horizon forecast cards (1/7/30 days)
-- Regime probability distributions
-- Key insights from analysis
-
-### **Future Pages**
-- Correlation: Time-series correlation analysis
-- Volatility: Regime-conditioned volatility
-- Factors: PCA loadings visualization
-
----
-
-## ✅ Completed Features
-
-- [x] **Data Pipeline:** Automated ETL with validation
-- [x] **Feature Engineering:** Volatility, correlation, PCA metrics
-- [x] **Regime Detection:** K-means clustering (K=4)
-- [x] **Validation:** Persistence, UMAP, economic monotonicity
-- [x] **Transition Analysis:** Transition matrix, stability metrics
-- [x] **Prediction Models:** Markov, HMM, RF, XGBoost
-- [x] **Model Evaluation:** Chronological validation, accuracy metrics
-- [x] **FastAPI Backend:** 10 REST endpoints
-- [x] **React Frontend:** Dashboard + Predictions page
-- [x] **Integration:** Frontend ↔ Backend data flow
-- [x] **Visualizations:** 10 prediction charts (confusion matrices, timelines)
-- [x] **Documentation:** FINDINGS.md, API docs, README
-
----
-
-## 🚧 In Progress
-
-- [ ] **Prediction Timeline Charts:** Historical predicted vs actual
-- [ ] **Confusion Matrix Heatmaps:** Per-model classification errors
-- [ ] **Confidence Over Time:** Model uncertainty tracking
-- [ ] **Real-Time Data:** Live streaming via Alpha Vantage/Polygon.io
-- [ ] **Data Upload:** CSV upload + trigger regime analysis
-
----
-
-## 🔮 Roadmap
-
-### **Phase 5: Advanced Visualizations**
-- [ ] Prediction timeline (Recharts line chart)
-- [ ] Interactive confusion matrices
-- [ ] Confidence over time charts
-- [ ] Per-regime breakdown visualizations
-
-### **Phase 6: Production Deployment**
-- [ ] AWS/Vercel deployment
-- [ ] PostgreSQL database (historical predictions)
-- [ ] Redis caching layer
-- [ ] User authentication (Auth0)
-- [ ] Rate limiting & monitoring
-
-### **Phase 7: SaaS Features**
-- [ ] Email alerts on regime transitions
-- [ ] Webhook integrations
-- [ ] API subscription tiers
-- [ ] Backtesting framework
-- [ ] Custom universes (beyond S&P 500)
-
----
-
-## 📚 Theoretical Background
-
-This project applies concepts from:
-- **Modern Portfolio Theory (MPT):** Markowitz optimization
-- **Factor Models:** Fama-French, APT
-- **Time-Series Econometrics:** Structural breaks, regime switching
-- **Multivariate Statistics:** PCA, correlation analysis
-- **Machine Learning:** K-means, Random Forest, XGBoost, HMM
-
-### Recommended Reading
-- *Active Portfolio Management* by Grinold & Kahn
-- *Machine Learning for Asset Managers* by Marcos López de Prado
-- *Advances in Financial Machine Learning* by Marcos López de Prado
-- *Quantitative Equity Portfolio Management* by Qian, Hua & Sorensen
-
----
-
-## 🧪 Testing
-
-### **Backend Tests**
-```bash
-# Test API endpoints
-python api/test_api.py
-
-# Test regime clustering
-PYTHONPATH=src python src/regime/run_regime_clustering.py
-
-# Test prediction comparison
-PYTHONPATH=src python src/regime/compare_predictions.py
-```
-
-### **Frontend Tests**
 ```bash
 cd frontend
-npm run build        # Production build
-npm run preview      # Preview production build
+npm install
+npm run dev                      # http://localhost:8080
+```
+
+Configure `frontend/.env.local` with `VITE_API_URL` (defaults to the local API) and, for sign-in, `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. Guest mode works without Supabase.
+
+**Tests**
+
+```bash
+pytest tests/
+```
+
+**Regenerating the research and model artifacts** (optional, everything is committed)
+
+```bash
+PYTHONPATH=src python src/regime/run_regime_clustering.py     # market-wide regimes
+python src/regime/train_multi_index_models.py                 # per-index models, all horizons
+python scripts/precompute.py                                  # static API responses
+python scripts/refresh_pipeline.py --dry-run                  # check data staleness
 ```
 
 ---
 
-## ⚖️ Disclaimer
+## API overview
 
-This project is for **educational and research purposes only**.
+| Group | Endpoints |
+|-------|-----------|
+| Regimes and market | `/api/regimes/{current,history,labels,performance}`, `/api/market/{spy,vix}/{current,history}`, `/api/indices/{symbol}/...` |
+| Predictions | `/api/predictions/{symbol}/current`, `/horizon/{days}`, `/model/{name}/horizon/{days}`, `/accuracy`, `/trajectory/{days}`, `/transitions`, `/backtest`, `/what-if`, `/export`, `/compare` |
+| Backtester | `GET /api/backtester/assets`, `POST /api/backtester/run` |
+| Correlations | `/api/correlations/{sector-matrix,rolling,regime-correlation,pca-structure,sector-pair-detail}` |
+| PCA | `/api/pca/{structure,loadings,components,regime-scores,scatter}` |
+| Custom data | `POST /api/custom/upload`, then `/api/custom/{session_id}/{status,overview,history,transitions,performance,features,predictions,predict}` |
+| Status | `/api/refresh/status`, `/api/health` |
 
-It utilizes historical data to explore quantitative finance concepts. This tool is **NOT**:
-- Investment advice or recommendations
-- A trading signal generator
-- A guarantee of future performance
-- Suitable for live trading without extensive testing
-
-**Always consult with qualified financial professionals before making investment decisions.**
-
----
-
-## 🤝 Contributing
-
-Contributions welcome! Please feel free to:
-- Report bugs via GitHub Issues
-- Submit pull requests for new features
-- Improve documentation
-- Add new prediction models
-- Optimize performance
+Full reference: [`docs/API_DOCUMENTATION.md`](docs/API_DOCUMENTATION.md).
 
 ---
 
-## 📄 License
+## Deployment
 
-MIT License - see LICENSE file for details.
+- **Frontend** on Vercel, pointed at the API through `VITE_API_URL`.
+- **API** as a Docker container on AWS Lightsail. `.github/workflows/deploy_api.yml` builds the image, pushes to ECR, and rolls out a new Lightsail deployment using GitHub OIDC (no stored AWS keys).
+- **Data refresh** in `.github/workflows/daily_refresh.yml` runs weekdays at 08:00 UTC, commits refreshed data, and triggers the API deploy.
 
----
-
-## 👤 Author
-
-**Akishai**
-
-Building quantitative finance tools that bridge machine learning and market analysis.
-
-For questions or collaboration: [Open an issue](https://github.com/yourusername/signalm/issues)
+Setup guide: [`docs/AWS_DEPLOY.md`](docs/AWS_DEPLOY.md).
 
 ---
 
-## 🙏 Acknowledgments
+## Documentation
 
-- S&P 500 data from publicly available sources
-- shadcn/ui for React components
-- FastAPI team for excellent API framework
-- scikit-learn, XGBoost, hmmlearn contributors
+- [`docs/FINDINGS.md`](docs/FINDINGS.md): research results and model comparison
+- [`docs/ACCURACY_FIX.md`](docs/ACCURACY_FIX.md): the evaluation-leakage audit and fix
+- [`docs/pca_interpretation.md`](docs/pca_interpretation.md): economic reading of the PCA factors
+- [`docs/API_DOCUMENTATION.md`](docs/API_DOCUMENTATION.md): endpoint reference
+- [`docs/AWS_DEPLOY.md`](docs/AWS_DEPLOY.md): infrastructure and deployment
 
 ---
 
-**⭐ Star this repo if you find it useful!**
+## Disclaimer
 
+SignalM is a research and educational tool. It is not investment advice, not a trading signal service, and makes no guarantee about future performance. Consult a qualified financial professional before making investment decisions.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
+
+## Author
+
+**Akishai Sabaratnasarma**, Software Engineering, University of Waterloo.
+Questions or ideas: [open an issue](https://github.com/Akishai18/SignalM/issues).
