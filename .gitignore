@@ -1,9 +1,24 @@
+# Python
 __pycache__/
 .venv/
-.DS_Store
+.pytest_cache/
+*.log
+
+# Environment
 .env
+
+# Build artifacts
+frontend/dist/
+
+# Local user uploads (served from Supabase Storage in production)
+user_datasets/
+
+# OS / editor
+.DS_Store
+
+# Local working files
 .claude/
 z_archive/
 z2_archive/
 html-assets/
-CLAUDE.md
+SESSION_NOTES.md

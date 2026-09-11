@@ -31,8 +31,15 @@ Pipeline: Data ingestion → Feature engineering → K-Means clustering → REST
 - Chronological 70/30 train/test split (no data leakage)
 
 ## Known Issues / History
-- Markov chain data leakage fixed: 99.54% → ~48% realistic accuracy (see `ACCURACY_FIX.md`)
-- Branch `whatif` has what-if scenario analysis feature (not yet merged)
+- Markov evaluation fixed to use a train-only transition matrix on the held-out 30% (see `docs/ACCURACY_FIX.md`). Saved test accuracy is still ~99.8% because regimes persist; HMM is the ~48% model.
+- Branches `whatif` and `more-improvements` are fully merged into main (verified 2026-09-10)
+
+## Key Architecture Facts (full-repo audit 2026-09-10)
+- **Two regime label systems.** Market-wide K4 labels (`regime_results/regime_labels_k4.csv`, 500-stock features, frozen 2024-12-20, mean durations 135-285d) feed `/api/regimes/*`, `/api/pca/*`, model training, and precomputed predictions. Per-index labels (`regime_results/indices/*_regimes.csv`, single-ticker vol/momentum/RSI features, refit daily) feed `/api/indices/*`, the backtester, volatility page, correlation overlay, and transitions. SPY per-index Calm lasts ~15d on average. Per-index cluster ids can permute after a refit; names come from a fixed id→name dict.
+- **Frozen vs live.** Models (26 pkl per index: Markov, HMM, RF and XGB at 11 horizons) and `precomputed/*_predictions|_backtest|_trajectory|_accuracy|pca_structure` were generated Feb 25 to Mar 1 2026 on data through 2024-12-20 and are never refreshed. Daily refresh only updates index regimes, transitions, sector correlations, and `regime_with_market_data.csv`.
+- **Ensemble.** Backend weights 25% each incl. Markov; frontend `lib/ensemble.ts` reweights HMM 70 / RF 15 / XGB 15 and hides Markov on the Predictions page.
+- **Custom uploads** run fresh K-Means with volatility-ranked regime names, Markov-only predictions (1-D HMM if >= 252 rows), stored in Supabase bucket `Datasets`.
+- **Timeline.** Research only Dec 23 2025 to Feb 18 2026 (EDA → PCA → UMAP → K-Means → validation → transitions → Markov/HMM). App from Feb 21 2026 (API + Lovable frontend), predictions Feb 26-28, correlations Mar 1, volatility/PCA pages Mar 14, upload Mar 18, backtester Mar 20, live refresh Mar 22, auth Mar 25-27, mobile May 27, AWS Aug 18-30.
 
 ## Current Branch
 `main`

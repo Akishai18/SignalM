@@ -1,7 +1,7 @@
 name: Deploy API to Lightsail
 
 # Builds the Docker image, pushes it to ECR, and deploys it to the Lightsail
-# container service (created once by aws-lightsail-setup.sh).
+# container service (created once by scripts/aws/aws-lightsail-setup.sh).
 #
 # Triggered by:
 #   - pushes to main (code or data changes)

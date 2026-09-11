@@ -16,13 +16,13 @@ commit (that call is required — pushes made with `GITHUB_TOKEN` never fire
 
 ## One-time setup (already done for this account)
 
-1. **ECR + GitHub OIDC + deploy role** — created by `aws-setup.sh` (run it
+1. **ECR + GitHub OIDC + deploy role** — created by `scripts/aws/aws-setup.sh` (run it
    in CloudShell). Creates the `signalm-api` ECR repo, the GitHub OIDC
    identity provider, and the `signalm-github-deploy` role that the
    workflow assumes. The role's trust policy is pinned to this repo's
    GitHub path — if the repo is ever renamed again, re-run
-   `aws-fix-trust.sh` with the new name.
-2. **Lightsail service** — created by `aws-lightsail-setup.sh` (run it in
+   `scripts/aws/aws-fix-trust.sh` with the new name.
+2. **Lightsail service** — created by `scripts/aws/aws-lightsail-setup.sh` (run it in
    CloudShell). Creates the nano container service, enables its ECR image
    puller role, grants that role pull access on the repo, adds Lightsail
    deploy permissions to `signalm-github-deploy`, and sets an ECR lifecycle
@@ -38,7 +38,7 @@ commit (that call is required — pushes made with `GITHUB_TOKEN` never fire
 The service URL looks like
 `https://signalm-api.<id>.us-east-1.cs.amazonlightsail.com`
 (Lightsail console → Containers → `signalm-api`, or the last line of
-`aws-lightsail-setup.sh` output).
+`scripts/aws/aws-lightsail-setup.sh` output).
 
 - `<url>/api/health` → `"status": "healthy"` with a date range ending at
   the latest refresh date
