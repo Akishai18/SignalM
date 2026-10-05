@@ -1,8 +1,8 @@
 {
-  "last_refresh_utc": "2026-10-02T14:27:33.145918+00:00",
-  "completed_utc": "2026-10-02T14:27:42.813233+00:00",
-  "data_through": "2026-10-02",
-  "total_rows_added": 26,
+  "last_refresh_utc": "2026-10-05T16:48:28.266841+00:00",
+  "completed_utc": "2026-10-05T16:48:38.963044+00:00",
+  "data_through": "2026-10-05",
+  "total_rows_added": 13,
   "tickers_updated": [
     "SPY",
     "VIX",
@@ -25,6 +25,6 @@
     "IWM"
   ],
   "index_regimes_failed": [],
-  "pipeline_duration_seconds": 9.7,
+  "pipeline_duration_seconds": 10.7,
   "success": true
 }
